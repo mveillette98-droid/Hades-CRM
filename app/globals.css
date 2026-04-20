@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Hades Blueprint CRM — always dark.
+  Shadcn semantic tokens mapped to brand palette.
+*/
+@layer base {
+  :root,
+  .dark {
+    --background: 0 0% 4%;          /* #0a0a0a */
+    --foreground: 0 0% 96%;         /* #f5f5f5 */
+
+    --card: 0 0% 10%;               /* #1a1a1a */
+    --card-foreground: 0 0% 96%;
+
+    --popover: 0 0% 8%;             /* #141414 */
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 0 73% 51%;           /* #dc2626 crimson */
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 14%;          /* #242424 */
+    --secondary-foreground: 0 0% 96%;
+
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 63%;   /* #a0a0a0 */
+
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 73% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 16%;             /* #2a2a2a */
+    --input: 0 0% 14%;
+    --ring: 0 73% 51%;
+
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink-950 text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  /* Subtle scrollbar tuned for dark theme */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3a3a;
+  }
+}
+
+@layer utilities {
+  .hb-gradient-text {
+    background: linear-gradient(180deg, #ffffff 0%, #a0a0a0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hb-hover-glow {
+    transition: box-shadow 200ms ease, border-color 200ms ease,
+      background-color 200ms ease, transform 200ms ease;
+  }
+  .hb-hover-glow:hover {
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
+      0 8px 24px -8px rgba(220, 38, 38, 0.45);
+    border-color: rgba(220, 38, 38, 0.55);
+  }
+}
