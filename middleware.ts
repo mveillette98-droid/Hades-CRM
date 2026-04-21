@@ -6,12 +6,21 @@ type CookieToSet = { name: string; value: string; options?: CookieOptions };
 const PUBLIC_PATHS = ["/login", "/auth/callback", "/auth/signout"];
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+    // Surface env misconfig as a plain response instead of crashing.
+    if (!url || !anon) {
+      return new NextResponse(
+        `Middleware env missing: url=${!!url} anon=${!!anon}`,
+        { status: 500, headers: { "x-mw-stage": "env-check" } }
+      );
+    }
+
+    let response = NextResponse.next({ request });
+
+    const supabase = createServerClient(url, anon, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -26,31 +35,44 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const pathname = request.nextUrl.pathname;
+    const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+
+    if (!user && !isPublic) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      redirectUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(redirectUrl);
     }
-  );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    if (user && pathname === "/login") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/dashboard";
+      redirectUrl.searchParams.delete("redirect");
+      return NextResponse.redirect(redirectUrl);
+    }
 
-  const pathname = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-
-  if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
+    return response;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? (err.stack ?? "") : "";
+    return new NextResponse(
+      `Middleware threw: ${message}\n\n${stack}`,
+      {
+        status: 500,
+        headers: {
+          "x-mw-stage": "caught",
+          "content-type": "text/plain; charset=utf-8",
+        },
+      }
+    );
   }
-
-  if (user && pathname === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    url.searchParams.delete("redirect");
-    return NextResponse.redirect(url);
-  }
-
-  return response;
 }
 
 export const config = {
