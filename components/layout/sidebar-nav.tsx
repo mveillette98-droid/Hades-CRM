@@ -7,6 +7,7 @@ import {
   KanbanSquare,
   Users,
   UsersRound,
+  Megaphone,
   Settings,
 } from "lucide-react";
 import { HBLogo } from "@/components/hb-logo";
@@ -30,6 +31,7 @@ const items: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/pipeline",  label: "Pipeline",  icon: KanbanSquare },
   { href: "/leads",     label: "Leads",     icon: Users },
+  { href: "/sources",   label: "Sources",   icon: Megaphone },
   { href: "/team",      label: "Team",      icon: UsersRound, adminOnly: true },
   { href: "/settings",  label: "Settings",  icon: Settings },
 ];
