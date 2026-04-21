@@ -1,13 +1,25 @@
+import { redirect } from "next/navigation";
 import { HBLogo } from "@/components/hb-logo";
+import { createClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
 export const metadata = { title: "Sign in — Hades Blueprint CRM" };
+export const dynamic = "force-dynamic";
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
   searchParams: { redirect?: string; error?: string; message?: string };
 }) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect(searchParams.redirect || "/dashboard");
+  }
+
   return (
     <main className="relative flex min-h-screen items-center justify-center px-6 py-16 overflow-hidden">
       {/* Ambient crimson glow */}
