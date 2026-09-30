@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { HBLogo } from "@/components/hb-logo";
+import { CadenceLogo } from "@/components/cadence-logo";
 import { createClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
-export const metadata = { title: "Sign in — Hades Blueprint CRM" };
+export const metadata = { title: "Sign in · Cadence GTM" };
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage({
@@ -45,16 +45,16 @@ export default async function LoginPage({
 
       <div className="w-full max-w-md">
         <div className="mb-10 flex flex-col items-center text-center">
-          <HBLogo size={44} />
+          <CadenceLogo size={44} />
           <h1 className="mt-6 font-display text-3xl font-bold tracking-tight hb-gradient-text">
-            Hades Blueprint
+            Cadence GTM
           </h1>
           <p className="mt-1 text-xs uppercase tracking-[0.28em] text-crimson-500">
             Operator Console
           </p>
           <p className="mt-4 max-w-sm text-sm text-muted-foreground">
-            Pick up the phone and start fucking dialling. Let&rsquo;s get
-            this money.
+            Sell it on the phone. Deliver it with the agents. Book the
+            calls that keep firms paying.
           </p>
         </div>
 
@@ -65,8 +65,8 @@ export default async function LoginPage({
         />
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          Built for Hades Blueprint —{" "}
-          <span className="text-crimson-500">Bold. Sharp. Execute.</span>
+          Cadence GTM, a growth firm.{" "}
+          <span className="text-crimson-500">Every beat on time.</span>
         </p>
       </div>
     </main>

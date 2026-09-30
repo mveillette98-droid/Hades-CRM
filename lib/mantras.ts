@@ -1,5 +1,5 @@
 /**
- * Hades Blueprint mantras.
+ * Cadence GTM mantras.
  *
  * Short, harsh, execution-focused. Rotated daily on the dashboard to
  * remind the operator to stay relentless. Edit freely — shorter is

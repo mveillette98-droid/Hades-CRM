@@ -15,9 +15,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Hades Blueprint CRM",
+  title: "Cadence GTM",
   description:
-    "Pipeline + revenue intelligence for Hades Blueprint — web builds, AI automation, retainers.",
+    "Cadence GTM operator console. Sell the pipeline, run fulfillment with an agent team.",
   icons: {
     icon: "/favicon.svg",
   },

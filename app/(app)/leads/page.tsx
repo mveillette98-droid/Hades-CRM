@@ -11,7 +11,7 @@ import {
 } from "@/lib/leads/queries";
 import { formatCompactCurrency } from "@/lib/utils";
 
-export const metadata = { title: "Leads — Hades Blueprint CRM" };
+export const metadata = { title: "Leads · Cadence GTM" };
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage() {

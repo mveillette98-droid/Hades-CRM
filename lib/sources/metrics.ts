@@ -11,9 +11,11 @@ import {
 // Brand-consistent palette for per-source color assignments.
 // Crimson is reserved for hero metrics; sources get a cool-to-warm spread.
 export const SOURCE_COLORS: Record<LeadSource, string> = {
-  instagram_hb: "#dc2626",   // crimson — the flagship brand channel
-  tiktok: "#f43f5e",         // rose
-  cold_outreach: "#fbbf24",  // gold
+  cold_call: "#dc2626",      // crimson — the flagship channel, you on the phone
+  cold_email: "#fbbf24",     // gold
+  linkedin: "#0ea5e9",       // sky
+  instagram: "#f43f5e",      // rose
+  tiktok: "#ec4899",         // pink
   referral: "#10b981",       // emerald
   network: "#3b82f6",        // blue
   website_form: "#a855f7",   // purple

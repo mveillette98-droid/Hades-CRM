@@ -3,15 +3,15 @@ import type { PipelineStage } from "@/lib/supabase/types";
 
 /**
  * Stage probabilities — position-based weighting for the forecast.
- * Matches the 9-stage seed from migration 0001:
+ * Matches the 9-stage pipeline (seeded in 0001, renamed in 0003):
  *   1 New Lead              → 5%
  *   2 Discovery Booked      → 15%
- *   3 Discovery Completed   → 30%
+ *   3 Discovery Done        → 30%
  *   4 Proposal Sent         → 50%
  *   5 Negotiation           → 70%
- *   6 Contract Signed       → 90%
- *   7 In Delivery           → 95%
- *   8 Delivered/Won         → 100%
+ *   6 Signed                → 90%
+ *   7 Onboarding            → 95%
+ *   8 Live Client           → 100%
  *   9 Lost                  → 0%
  *
  * `is_won` / `is_lost` flags override the table (so custom stages still behave).

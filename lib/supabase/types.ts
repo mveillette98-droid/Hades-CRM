@@ -6,15 +6,18 @@
 export type UserRole = "admin" | "member";
 
 export type DealType =
-  | "website_build"
-  | "ai_automation"
-  | "website_plus_automation"
-  | "retainer"
+  | "outbound_retainer"
+  | "gtm_setup"
+  | "content_retainer"
+  | "paid_ads"
+  | "full_gtm"
   | "other";
 
 export type LeadSource =
-  | "cold_outreach"
-  | "instagram_hb"
+  | "cold_call"
+  | "cold_email"
+  | "linkedin"
+  | "instagram"
   | "tiktok"
   | "referral"
   | "network"
@@ -46,6 +49,7 @@ export interface Lead {
   phone: string | null;
   email: string | null;
   website_url: string | null;
+  vertical: string | null;
   deal_type: DealType;
   one_time_value: number;
   monthly_recurring_value: number;
@@ -62,6 +66,49 @@ export interface Lead {
   proposal_sent_date: string | null;
   expected_close_date: string | null;
   actual_close_date: string | null;
+}
+
+export type ClientStatus = "onboarding" | "active" | "paused" | "churned";
+
+export interface Client {
+  id: string;
+  name: string;
+  vertical: string;
+  website_url: string | null;
+  status: ClientStatus;
+  monthly_retainer: number;
+  offer: string | null;
+  icp: string | null;
+  pain_points: string | null;
+  differentiators: string | null;
+  proof: string | null;
+  voice: string | null;
+  avoid: string | null;
+  notes: string | null;
+  lead_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AgentKind = "research" | "cold_email" | "content";
+export type AgentRunStatus = "running" | "succeeded" | "failed";
+
+export interface AgentRun {
+  id: string;
+  client_id: string;
+  kind: AgentKind;
+  status: AgentRunStatus;
+  step: string | null;
+  instructions: string | null;
+  output: Record<string, unknown> | null;
+  error: string | null;
+  model: string | null;
+  usage: Record<string, number> | null;
+  approved: boolean;
+  created_by: string | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
 export interface Activity {
@@ -126,6 +173,7 @@ export interface Database {
           phone?: string | null;
           email?: string | null;
           website_url?: string | null;
+          vertical?: string | null;
           deal_type?: DealType;
           one_time_value?: number;
           monthly_recurring_value?: number;
@@ -155,6 +203,23 @@ export interface Database {
         Update: Partial<Activity>;
         Relationships: [];
       };
+      clients: {
+        Row: Client;
+        Insert: Partial<Omit<Client, "id" | "created_at" | "updated_at">> & {
+          name: string;
+        };
+        Update: Partial<Client>;
+        Relationships: [];
+      };
+      agent_runs: {
+        Row: AgentRun;
+        Insert: Partial<Omit<AgentRun, "id" | "created_at">> & {
+          client_id: string;
+          kind: AgentKind;
+        };
+        Update: Partial<AgentRun>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -162,6 +227,9 @@ export interface Database {
       user_role: UserRole;
       deal_type: DealType;
       lead_source: LeadSource;
+      client_status: ClientStatus;
+      agent_kind: AgentKind;
+      agent_run_status: AgentRunStatus;
     };
   };
 }

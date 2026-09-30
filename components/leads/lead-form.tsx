@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DEAL_TYPES, LEAD_SOURCES, dealEmphasis } from "@/lib/leads/labels";
+import { DEAL_TYPES, LEAD_SOURCES, VERTICALS, dealEmphasis } from "@/lib/leads/labels";
 import { createLead, updateLead } from "@/lib/leads/actions";
 import { formatCompactCurrency, cn, totalContractValue } from "@/lib/utils";
 import type { DealType, Lead, LeadSource, PipelineStage, Profile } from "@/lib/supabase/types";
@@ -34,9 +34,9 @@ export function LeadForm({ mode, lead, stages, team, onDone }: LeadFormProps) {
 
   // Controlled state for smart defaults + live TCV calc
   const [dealType, setDealType] = useState<DealType>(
-    lead?.deal_type ?? "website_build"
+    lead?.deal_type ?? "outbound_retainer"
   );
-  const [source, setSource] = useState<LeadSource>(lead?.source ?? "cold_outreach");
+  const [source, setSource] = useState<LeadSource>(lead?.source ?? "cold_call");
   const [stageId, setStageId] = useState<string>(
     lead?.stage_id ?? stages[0]?.id ?? ""
   );
@@ -88,7 +88,7 @@ export function LeadForm({ mode, lead, stages, team, onDone }: LeadFormProps) {
             <Input
               name="contact_name"
               defaultValue={lead?.contact_name}
-              placeholder="Taylor Ortiz"
+              placeholder="Dana Whitfield"
               required
             />
           </Field>
@@ -96,7 +96,7 @@ export function LeadForm({ mode, lead, stages, team, onDone }: LeadFormProps) {
             <Input
               name="company_name"
               defaultValue={lead?.company_name}
-              placeholder="Blackriver Roofing"
+              placeholder="Whitfield & Co. CPAs"
               required
             />
           </Field>
@@ -112,16 +112,29 @@ export function LeadForm({ mode, lead, stages, team, onDone }: LeadFormProps) {
             <Input
               name="email"
               defaultValue={lead?.email ?? ""}
-              placeholder="taylor@blackriver.com"
+              placeholder="dana@whitfieldcpa.com"
               type="email"
             />
           </Field>
-          <Field label="Current website" error={err("website_url")} className="sm:col-span-2">
+          <Field label="Website" error={err("website_url")}>
             <Input
               name="website_url"
               defaultValue={lead?.website_url ?? ""}
-              placeholder="https://blackriver.com"
+              placeholder="https://whitfieldcpa.com"
             />
+          </Field>
+          <Field label="Vertical" error={err("vertical")}>
+            <Input
+              name="vertical"
+              defaultValue={lead?.vertical ?? "Accounting / CAS"}
+              placeholder="Accounting / CAS"
+              list="cadence-verticals"
+            />
+            <datalist id="cadence-verticals">
+              {VERTICALS.map((v) => (
+                <option key={v} value={v} />
+              ))}
+            </datalist>
           </Field>
         </div>
       </Section>
@@ -174,7 +187,7 @@ export function LeadForm({ mode, lead, stages, team, onDone }: LeadFormProps) {
             muted={emphasis === "mrr"}
             hint={
               emphasis === "mrr"
-                ? "Retainer picked — MRR is the key number."
+                ? "Retainer picked. MRR is the key number."
                 : undefined
             }
           >
@@ -193,7 +206,7 @@ export function LeadForm({ mode, lead, stages, team, onDone }: LeadFormProps) {
             muted={emphasis === "one_time"}
             hint={
               emphasis === "one_time"
-                ? "Website build picked — usually 0 unless you host it."
+                ? "Setup picked. Usually 0 unless it rolls into a retainer."
                 : undefined
             }
           >
@@ -294,12 +307,12 @@ export function LeadForm({ mode, lead, stages, team, onDone }: LeadFormProps) {
 
       {/* Scope notes */}
       <Section title="Scope" accent="crimson">
-        <Field label="What they need built">
+        <Field label="What they need">
           <Textarea
             name="scope_notes"
             defaultValue={lead?.scope_notes ?? ""}
             rows={4}
-            placeholder="5-page Next.js build, Stripe checkout, CMS-driven blog, target ship date end of May…"
+            placeholder="Wants 10+ advisory calls a month. Tried an agency in 2025, got junk leads. Partner meeting on the 15th…"
           />
         </Field>
       </Section>
