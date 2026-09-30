@@ -8,6 +8,7 @@ const body = z.object({
   clientId: z.string().uuid(),
   kind: z.enum(["research", "cold_email", "content"]),
   instructions: z.string().trim().max(12000).optional(),
+  waitForCapture: z.boolean().optional(),
 });
 
 /** Create a run. The browser then calls /advance until it's done. */
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
 
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
-  const { clientId, kind, instructions } = parsed.data;
+  const { clientId, kind, instructions, waitForCapture } = parsed.data;
 
   const client = await getClientRow(clientId);
   if (!client) return NextResponse.json({ error: "Client not found." }, { status: 404 });
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
     researchRunId = research.id;
   }
 
-  const state = initialState(kind, researchRunId);
+  const state = initialState(kind, researchRunId, waitForCapture ?? false);
   const { data, error } = await supabase
     .from("agent_runs")
     .insert({

@@ -75,6 +75,7 @@ export const companyProfileSchema: JsonSchema = obj({
 export interface CompetitorPick {
   name: string;
   website: string;
+  linkedin_url: string;
   why: string;
   size_estimate: string;
 }
@@ -87,6 +88,7 @@ export const competitorListSchema: JsonSchema = obj({
   competitors: list("Exactly 3 competitors, the ones whose marketing is most worth copying first.", {
     name: str("Firm name."),
     website: str("Homepage URL."),
+    linkedin_url: str("LinkedIn company page URL if you found it, otherwise an empty string."),
     why: str("Why this one: same buyer, visibly winning, and how you know."),
     size_estimate: str("Rough headcount or revenue band."),
   }),
@@ -294,5 +296,153 @@ export const critiqueSchema: JsonSchema = obj({
     location: str("Where: e.g. 'Sequence 2, email 1, subject' or 'Post 3 hook'."),
     problem: str("What's wrong, specifically."),
     fix: str("Exactly how to fix it."),
+  }),
+});
+
+// ---------------------------------------------------------------------
+// Strategy agent: market analysis report (part 1: analysis)
+// ---------------------------------------------------------------------
+export interface MarketReport {
+  executive_summary: string;
+  market_overview: { state_of_market: string; trends: string[]; buying_process: string };
+  personas: {
+    name: string;
+    title: string;
+    firm_profile: string;
+    goals: string[];
+    fears: string[];
+    where_they_pay_attention: string[];
+  }[];
+  pain_points: {
+    pain: string;
+    severity: "critical" | "high" | "medium";
+    in_their_words: string;
+    cost_of_inaction: string;
+    evidence: string;
+  }[];
+  messaging: {
+    awareness_level: string;
+    positioning_statement: string;
+    core_message: string;
+    proof_points: string[];
+    by_persona: { persona: string; message: string }[];
+  };
+  strategic_rationale: { principle: string; why_it_applies: string; how_we_use_it: string }[];
+  competitive_matrix: { competitor: string; strongest_channel: string; core_promise: string; our_edge: string }[];
+  kpis: { metric: string; target: string; timeframe: string }[];
+  risks: { risk: string; mitigation: string }[];
+}
+
+export const marketReportSchema: JsonSchema = obj({
+  executive_summary: str("5 to 7 sentences a partner at the client firm could read and act on."),
+  market_overview: obj({
+    state_of_market: str("Where this market is right now and where it's going."),
+    trends: strList("4 to 6 trends that change how this buyer buys."),
+    buying_process: str("How the buyer actually finds, evaluates, and signs with a firm like this. Who's involved, how long it takes."),
+  }),
+  personas: list("2 or 3 buyer personas.", {
+    name: str("A label, e.g. 'The overwhelmed founder'."),
+    title: str("Job title."),
+    firm_profile: str("Their company: industry, size, stage."),
+    goals: strList("What they want."),
+    fears: strList("What keeps them up at night."),
+    where_they_pay_attention: strList("Where they spend attention: platforms, communities, publications, events."),
+  }),
+  pain_points: list("6 to 10 pain points, worst first.", {
+    pain: str("The pain."),
+    severity: { type: "string", enum: ["critical", "high", "medium"], description: "How badly it hurts." },
+    in_their_words: str("How the buyer would say it on a call."),
+    cost_of_inaction: str("What it costs them to leave it alone, with a number and timeframe where the evidence allows."),
+    evidence: str("Where this comes from."),
+  }),
+  messaging: obj({
+    awareness_level: str("Where most of this market sits: unaware, problem aware, solution aware, product aware, or most aware. And what that means for the copy."),
+    positioning_statement: str("For [who] who [need], [client] is the [category] that [key benefit], unlike [alternative]."),
+    core_message: str("The one line every piece of copy ladders up to."),
+    proof_points: strList("The proof we lead with, strongest first. Only what the client can back up."),
+    by_persona: list("One message per persona.", {
+      persona: str("Persona label."),
+      message: str("What we say to them."),
+    }),
+  }),
+  strategic_rationale: list("The marketing and sales principles this strategy rests on, and why they fit this market.", {
+    principle: str("Named principle, e.g. 'Message to market match', 'Specificity sells', 'Risk reversal'."),
+    why_it_applies: str("Why it fits this client and buyer."),
+    how_we_use_it: str("Where it shows up in the plan."),
+  }),
+  competitive_matrix: list("One row per competitor studied.", {
+    competitor: str("Competitor."),
+    strongest_channel: str("Where they win."),
+    core_promise: str("What they promise."),
+    our_edge: str("How the client beats them."),
+  }),
+  kpis: list("What we measure.", {
+    metric: str("Metric, e.g. positive reply rate, booked calls, cost per booked call."),
+    target: str("Target number."),
+    timeframe: str("By when, e.g. 'per month by day 60'."),
+  }),
+  risks: list("What could go wrong.", {
+    risk: str("Risk."),
+    mitigation: str("What we do about it."),
+  }),
+});
+
+// ---------------------------------------------------------------------
+// Strategy agent: market analysis report (part 2: scripts)
+// ---------------------------------------------------------------------
+export interface Scripts {
+  cold_call: {
+    opener: string;
+    reason_for_call: string;
+    discovery_questions: string[];
+    pitch: string;
+    objections: { objection: string; response: string }[];
+    close: string;
+  };
+  linkedin_dms: { step: number; when: string; message: string }[];
+  meta_ads: { angle: string; primary_text: string; headline: string; cta: string; visual_direction: string }[];
+  video_ad: { hook: string; beats: string[]; cta: string };
+  sales_call: {
+    agenda: string;
+    discovery_questions: string[];
+    pitch_framing: string;
+    close: string;
+  };
+}
+
+export const scriptsSchema: JsonSchema = obj({
+  cold_call: obj({
+    opener: str("First 10 seconds. Permission-based, not salesy."),
+    reason_for_call: str("Why you're calling, tied to a pain or trigger."),
+    discovery_questions: strList("4 to 6 questions that get the prospect talking about the pain."),
+    pitch: str("30-second pitch after discovery."),
+    objections: list("The objections a prospect will actually raise on a cold call.", {
+      objection: str("Objection as they'd say it."),
+      response: str("Word-for-word response."),
+    }),
+    close: str("The ask for the meeting, word for word."),
+  }),
+  linkedin_dms: list("A 3 to 4 step connection and DM sequence.", {
+    step: { type: "integer", description: "1-based step." },
+    when: str("When it goes out, e.g. 'on connect', 'day 3'."),
+    message: str("The message. Short, human, no pitch in step 1."),
+  }),
+  meta_ads: list("3 Meta ads, one per top angle.", {
+    angle: str("Angle."),
+    primary_text: str("Primary text."),
+    headline: str("Headline."),
+    cta: str("CTA button and offer."),
+    visual_direction: str("What the image or video shows."),
+  }),
+  video_ad: obj({
+    hook: str("First 3 seconds, word for word."),
+    beats: strList("The beats of a 30 to 45 second video, in order, with the lines."),
+    cta: str("Closing CTA."),
+  }),
+  sales_call: obj({
+    agenda: str("How the client opens the booked call and sets the agenda."),
+    discovery_questions: strList("6 to 8 discovery questions, in order."),
+    pitch_framing: str("How to present the offer once the pain is on the table."),
+    close: str("How to ask for the business."),
   }),
 });

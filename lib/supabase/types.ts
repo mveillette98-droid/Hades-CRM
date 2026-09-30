@@ -110,9 +110,26 @@ export interface AgentRun {
   model: string | null;
   usage: Record<string, number> | null;
   approved: boolean;
+  locked_until: string | null;
   created_by: string | null;
   created_at: string;
   completed_at: string | null;
+}
+
+export type CaptureSource = "meta_ads" | "linkedin_ads" | "google_ads" | "linkedin_page" | "website";
+
+export interface IntelCapture {
+  id: string;
+  client_id: string;
+  run_id: string | null;
+  competitor: string;
+  source: CaptureSource;
+  url: string;
+  screenshot_path: string | null;
+  page_text: string | null;
+  ok: boolean;
+  error: string | null;
+  captured_at: string;
 }
 
 export interface Activity {
@@ -224,6 +241,17 @@ export interface Database {
         Update: Partial<AgentRun>;
         Relationships: [];
       };
+      intel_captures: {
+        Row: IntelCapture;
+        Insert: Partial<Omit<IntelCapture, "id" | "captured_at">> & {
+          client_id: string;
+          competitor: string;
+          source: CaptureSource;
+          url: string;
+        };
+        Update: Partial<IntelCapture>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -234,6 +262,7 @@ export interface Database {
       client_status: ClientStatus;
       agent_kind: AgentKind;
       agent_run_status: AgentRunStatus;
+      capture_source: CaptureSource;
     };
   };
 }

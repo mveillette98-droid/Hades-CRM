@@ -125,7 +125,15 @@ export default async function ClientPage({
                   autoStartResearch={searchParams.start === "research" && runs.length === 0}
                   activeRun={
                     activeRun
-                      ? { id: activeRun.id, kind: activeRun.kind, step: activeRun.step, error: activeRun.error }
+                      ? {
+                          id: activeRun.id,
+                          kind: activeRun.kind,
+                          phase: (activeRun.output as RunState | null)?.phase ?? null,
+                          step: activeRun.step,
+                          error: activeRun.error,
+                          divesDone: (activeRun.output as RunState | null)?.dives?.length ?? 0,
+                          competitorCount: (activeRun.output as RunState | null)?.competitors?.length ?? 0,
+                        }
                       : null
                   }
                 />

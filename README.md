@@ -11,26 +11,57 @@ Two halves in one app:
 
 ## The agent team
 
-Each client gets one brief (offer, ICP, pains, differentiators, proof, voice, off-limits). Every agent reads it.
+Each client gets one brief (intake + offer, ICP, pains, differentiators, proof, voice, off-limits). Every agent reads it.
 
-| Agent | What it does | Tools |
+### Onboarding: Research agent → Chrome capture → Strategy agent
+
+| Step | Agent | Output |
 | --- | --- | --- |
-| **Onboarding research** | 6 steps: profiles the client (niche, size, services, positioning, current marketing) → picks its top 3 competitors → deep dives each one channel by channel (Meta ads, LinkedIn organic + ads, Google ads, SEO, cold outbound, newsletter, events, partners, reviews) → builds the replication playbook (plays to copy and how we adapt them, gaps, prioritized channel plan, first 30 days) plus the research brief the writers use | Web search + web fetch |
-| **Cold email** | One 3 to 4 step sequence per top angle, with merge tags | Reads the latest research |
-| **LinkedIn content** | A week of posts for the firm owner | Reads the latest research |
-| **Critic** | Scores every draft 1 to 10 against a rubric. Under 8 goes back to the writer with specific fixes (up to 2 revisions) | Brief + rubric |
+| 1 | Research | Client profile: niche, services, size, locations, positioning, current marketing, strengths, weaknesses |
+| 2 | Research | Top 3 competitors (starts from the ones the client named) |
+| 3 | **Chrome capture** (your laptop) | Screenshots + page text of each competitor's Meta Ad Library, LinkedIn Ad Library, Google Ads Transparency, LinkedIn posts, website |
+| 4 | Research | Deep dive per competitor, channel by channel, reading the screenshots |
+| 5 | Strategy | Research brief + replication playbook (plays to copy, gaps, channel plan, first 30 days) |
+| 6 | Strategy | Market analysis report: exec summary, market, personas, pain points, competitive matrix, positioning + messaging, strategic rationale, KPIs, risks |
+| 7 | Strategy | Scripts: cold call, LinkedIn DMs, Meta ads, video ad, sales call talk track |
 
-Every research finding is tagged **observed** (seen in a source) or **inferred** (read from indirect signals). Meta's Ad Library and logged-in LinkedIn usually won't load for the agents, so those channels come back as "unknown" rather than guessed. Paste what you see there into the run notes box and the agents treat it as observed.
+The report lives at `/clients/:id/report/:runId` with every screenshot embedded. Hit **Save as PDF**.
 
-Onboarding flow: New client → fill the intake (size, location, competitors they named, current marketing) and the brief → leave "Start onboarding research as soon as I save" checked → the client page opens and research starts. Results show up step by step as they land.
+Every finding is tagged **observed** or **inferred**. Nothing gets guessed: channels the agents can't see come back "unknown".
 
-How a run works:
+### Writers
 
-1. You click **Run** on a client page (optionally with a steer like "Texas construction firms only").
-2. `POST /api/agents/runs` creates an `agent_runs` row with the pipeline state.
-3. The browser calls `POST /api/agents/runs/:id/advance` once per step (research, write, critique, revise, critique…). Each call runs exactly one agent and saves the new state, so no request gets near serverless time limits.
-4. If the tab closes or a step errors, the run stays paused at its last saved step. Hit **Resume** to continue or **Stop** to drop it.
-5. Approve the output you're shipping. Copy buttons on every email and post.
+| Agent | What it does |
+| --- | --- |
+| **Cold email** | One 3 to 4 step sequence per top angle, with merge tags |
+| **LinkedIn content** | A week of posts for the firm owner |
+| **Critic** | Scores every draft 1 to 10. Under 8 goes back to the writer with fixes (up to 2 revisions) |
+
+### Chrome capture agent
+
+Runs on your laptop in its own Chrome profile (`.cadence-chrome/`, gitignored), separate from your everyday browser.
+
+```bash
+npm install
+npm run capture -- --login        # one time: log into Facebook + LinkedIn (use a secondary account if you have one)
+npm run capture -- <runId>        # the client page shows this command with the run id filled in
+npm run capture -- <runId> --no-linkedin-pages   # skip logged-in LinkedIn pages
+```
+
+Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` (laptop only, never in Vercel client code). No site-specific selectors: it loads each page, scrolls, screenshots, and grabs the visible text, so layout changes don't break it. It paces itself between pages. When it finishes it releases the run and the deep dives start on their own.
+
+Heads up: automated browsing of LinkedIn and Facebook is against their terms. Keep volume low (3 competitors per client is fine), use a secondary account where you can, or skip capture and paste what you see into the run notes instead.
+
+### How runs stay up
+
+- **One step per request.** Each agent call is its own HTTP request with state saved after it, so a crash loses one step, not the run.
+- **Step budget.** A step stops itself at about 250s, before Vercel's 300s limit, so the failure is recorded and retried instead of the function dying mid-write.
+- **Retries.** The SDK retries rate limits and 5xx errors. The browser retries a failed step 3 times with backoff (5s, 15s, 30s) before asking you.
+- **Lock.** A run can only advance in one place at a time. A second tab waits.
+- **Skip, don't stall.** A competitor whose deep dive fails twice is skipped, flagged in the report, and the run carries on.
+- **Resume.** Close the tab mid-run and hit Resume later. It picks up from the last finished step.
+- **Strict outputs.** Every agent returns through a strict JSON schema, so the UI never gets half-shaped data.
+- **Refusal fallback.** Server-side fallbacks re-run a declined request on another model.
 
 Agents run on `claude-opus-5-5` with server-side refusal fallbacks enabled (`fallbacks: "default"`). Code lives in `lib/agents/`: `prompts.ts` (system prompts + house style), `schemas.ts` (strict output contracts), `pipelines.ts` (the state machine), `claude.ts` (the Claude call loop).
 
@@ -96,6 +127,7 @@ Open the Supabase dashboard → **SQL Editor** and run each file in order:
 2. [`0002_stage_entered_at.sql`](./supabase/migrations/0002_stage_entered_at.sql)
 3. [`0003_cadence_gtm.sql`](./supabase/migrations/0003_cadence_gtm.sql): renames deal types, sources and stages for Cadence (existing rows keep their meaning), adds `leads.vertical`, and creates `clients` + `agent_runs`.
 4. [`0004_onboarding_intel.sql`](./supabase/migrations/0004_onboarding_intel.sql): onboarding intake fields on `clients`.
+5. [`0005_capture_report_hardening.sql`](./supabase/migrations/0005_capture_report_hardening.sql): run lock, `intel_captures` table, private `intel` storage bucket for screenshots.
 
 0001 creates:
 
@@ -161,6 +193,10 @@ supabase/migrations/
   0002_stage_entered_at.sql
   0003_cadence_gtm.sql
   0004_onboarding_intel.sql
+  0005_capture_report_hardening.sql
+scripts/
+  capture.ts         # Chrome capture agent (runs on your laptop)
+  capture-lib.ts
 ```
 
 ---
@@ -172,7 +208,8 @@ supabase/migrations/
 - [x] Client briefs + agent team (research, cold email, LinkedIn, critic)
 - [x] Onboarding research: client profile, top 3 competitor channel deep dives, replication playbook
 - [ ] Client-facing onboarding form (shareable link that fills the brief)
-- [ ] Screenshot upload for ad library intel (agents read the images)
+- [x] Chrome capture agent + screenshots in the deep dives
+- [x] Market analysis report with scripts, printable to PDF
 - [ ] List building agent (pull + enrich prospects for a client's ICP)
 - [ ] Push approved sequences to the sending tool (Instantly / Smartlead)
 - [ ] Client-facing monthly report

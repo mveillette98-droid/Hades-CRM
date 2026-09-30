@@ -1,4 +1,5 @@
-import { ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "./copy-button";
 import type { CriticRound, RunState } from "@/lib/agents/pipelines";
@@ -22,6 +23,24 @@ export function RunOutput({ run }: { run: AgentRun }) {
     if (!any) return <Empty />;
     return (
       <div className="space-y-10">
+        {(state.report || state.brief) && (
+          <Link
+            href={`/clients/${run.client_id}/report/${run.id}`}
+            className="flex items-center justify-between gap-3 rounded-md border border-gold-700/50 bg-gold-900/10 px-4 py-3 text-sm text-gold-100 hover:border-gold-500/60"
+          >
+            <span className="inline-flex items-center gap-2 font-medium">
+              <FileText className="h-4 w-4" />
+              Market analysis report
+              {state.phase !== "done" && <span className="text-xs text-muted-foreground">(in progress)</span>}
+            </span>
+            <span className="text-xs text-muted-foreground">Screenshots, personas, pains, messaging, scripts. Save as PDF.</span>
+          </Link>
+        )}
+        {state.skipped && state.skipped.length > 0 && (
+          <p className="rounded-md border border-gold-700/40 bg-gold-900/10 px-3 py-2 text-xs text-gold-200">
+            Deep dive skipped after repeated failures: {state.skipped.join(", ")}. The rest of the run carried on.
+          </p>
+        )}
         {state.brief?.playbook && <PlaybookView playbook={state.brief.playbook} />}
         {state.profile && <ProfileView profile={state.profile} />}
         {state.dives && state.dives.length > 0 && (
@@ -291,7 +310,7 @@ function DivesView({ dives, total }: { dives: CompetitorDive[]; total: number })
                 <p className="truncate text-xs text-muted-foreground">{d.positioning}</p>
               </div>
               <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                {d.channels
+                {(d.channels ?? [])
                   .filter((c) => c.activity === "heavy" || c.activity === "moderate")
                   .map((c) => (
                     <span
@@ -316,7 +335,7 @@ function DivesView({ dives, total }: { dives: CompetitorDive[]; total: number })
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink-700">
-                    {d.channels.map((c) => (
+                    {(d.channels ?? []).map((c) => (
                       <tr key={c.channel} className="align-top">
                         <td className="py-2 pr-3 font-medium text-foreground">
                           {CHANNEL_LABEL[c.channel] ?? c.channel}

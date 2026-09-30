@@ -1,33 +1,73 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { AgentError, emptyUsage } from "@/lib/agents/claude";
-import { advance, pendingStepLabel, type RunState } from "@/lib/agents/pipelines";
-import { getClientRow, mergeUsage, requireUser, researchById } from "@/lib/agents/runs";
+import { AgentError, RetryableAgentError, emptyUsage } from "@/lib/agents/claude";
+import {
+  advance,
+  pendingStepLabel,
+  recordFailure,
+  type RunState,
+} from "@/lib/agents/pipelines";
+import {
+  getClientRow,
+  loadCaptures,
+  mergeUsage,
+  requireUser,
+  researchById,
+} from "@/lib/agents/runs";
 import type { AgentRun } from "@/lib/supabase/types";
 
-// One agent call per request. Research with web search is the slowest step.
+// One agent call per request. Steps stop themselves at ~250s (see claude.ts).
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
+
+const LOCK_MS = 5 * 60 * 1000;
 
 /** Run the next agent in this run's pipeline and persist the result. */
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const { supabase, user } = await requireUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const { data: run } = await supabase
+  // Claim the run. If another tab or request holds the lock, back off.
+  const now = new Date();
+  const { data: claimed } = await supabase
     .from("agent_runs")
-    .select("*")
+    .update({ locked_until: new Date(now.getTime() + LOCK_MS).toISOString() })
     .eq("id", params.id)
+    .eq("status", "running")
+    .or(`locked_until.is.null,locked_until.lt."${now.toISOString()}"`)
+    .select("*")
     .maybeSingle<AgentRun>();
-  if (!run) return NextResponse.json({ error: "Run not found." }, { status: 404 });
 
+  if (!claimed) {
+    const { data: run } = await supabase
+      .from("agent_runs")
+      .select("status, step, output")
+      .eq("id", params.id)
+      .maybeSingle<Pick<AgentRun, "status" | "step" | "output">>();
+    if (!run) return NextResponse.json({ error: "Run not found." }, { status: 404 });
+    if (run.status !== "running") {
+      return NextResponse.json({ status: run.status, step: run.step, done: true });
+    }
+    return NextResponse.json({ status: "running", step: run.step, busy: true }, { status: 409 });
+  }
+
+  const run = claimed;
   const state = (run.output ?? {}) as unknown as RunState;
-  if (run.status !== "running" || state.phase === "done") {
+
+  if (state.phase === "done") {
+    await supabase.from("agent_runs").update({ locked_until: null }).eq("id", run.id);
     return NextResponse.json({ status: run.status, step: run.step, done: true });
+  }
+  if (state.phase === "capture") {
+    await supabase.from("agent_runs").update({ locked_until: null }).eq("id", run.id);
+    return NextResponse.json({ status: "running", step: run.step, waiting: "capture" });
   }
 
   const client = await getClientRow(run.client_id);
-  if (!client) return NextResponse.json({ error: "Client not found." }, { status: 404 });
+  if (!client) {
+    await supabase.from("agent_runs").update({ locked_until: null }).eq("id", run.id);
+    return NextResponse.json({ error: "Client not found." }, { status: 404 });
+  }
 
   const usage = emptyUsage();
   try {
@@ -39,6 +79,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       research,
       instructions: run.instructions,
       usage,
+      loadCaptures: (competitor) => loadCaptures(run.client_id, competitor),
     });
     const done = next.phase === "done";
 
@@ -51,6 +92,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
         status: done ? "succeeded" : "running",
         completed_at: done ? new Date().toISOString() : null,
         error: null,
+        locked_until: null,
       })
       .eq("id", run.id);
 
@@ -59,8 +101,10 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       status: done ? "succeeded" : "running",
       step: pendingStepLabel(run.kind, next),
       done,
+      waiting: next.phase === "capture" ? "capture" : undefined,
     });
   } catch (err) {
+    const retryable = !(err instanceof AgentError) || err instanceof RetryableAgentError;
     const message =
       err instanceof AgentError
         ? err.message
@@ -68,15 +112,22 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
           ? `Agent call failed: ${err.message}`
           : "Agent call failed.";
 
-    // Keep the state so the run can be resumed; just record the error.
+    // Keep the state so the run can resume. A competitor that keeps failing gets skipped.
+    const next = recordFailure(state);
     await supabase
       .from("agent_runs")
       .update({
+        output: next as unknown as Record<string, unknown>,
+        step: pendingStepLabel(run.kind, next),
         error: message,
         usage: mergeUsage(run.usage, usage) as unknown as Record<string, number>,
+        locked_until: null,
       })
       .eq("id", run.id);
 
-    return NextResponse.json({ error: message, done: false }, { status: 502 });
+    return NextResponse.json(
+      { error: message, retryable, step: pendingStepLabel(run.kind, next), done: false },
+      { status: retryable ? 503 : 422 }
+    );
   }
 }

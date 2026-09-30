@@ -85,3 +85,25 @@
     border-color: rgba(220, 38, 38, 0.55);
   }
 }
+
+/* Market analysis report: print as a clean light document. */
+@media print {
+  aside,
+  header.sticky,
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  .report-paper {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  @page {
+    margin: 16mm;
+  }
+}

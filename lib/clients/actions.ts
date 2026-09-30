@@ -98,9 +98,28 @@ export async function stopRun(runId: string, clientId: string): Promise<ActionRe
   const { supabase } = await requireUser();
   const { error } = await supabase
     .from("agent_runs")
-    .update({ status: "failed", completed_at: new Date().toISOString() })
+    .update({ status: "failed", completed_at: new Date().toISOString(), locked_until: null })
     .eq("id", runId)
     .eq("status", "running");
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/clients/${clientId}`);
+  return { ok: true };
+}
+
+/** Move an onboarding run past the Chrome capture pause. */
+export async function continueAfterCapture(runId: string, clientId: string): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+  const { data: run } = await supabase
+    .from("agent_runs")
+    .select("output")
+    .eq("id", runId)
+    .maybeSingle<{ output: Record<string, unknown> | null }>();
+  const state = run?.output ?? {};
+  if (state.phase !== "capture") return { ok: true };
+  const { error } = await supabase
+    .from("agent_runs")
+    .update({ output: { ...state, phase: "dive" }, step: "Research agent: starting deep dives" })
+    .eq("id", runId);
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/clients/${clientId}`);
   return { ok: true };

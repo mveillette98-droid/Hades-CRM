@@ -1,8 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { AgentKind, AgentRun, Client } from "@/lib/supabase/types";
+import type { AgentKind, AgentRun, Client, IntelCapture } from "@/lib/supabase/types";
 import { emptyUsage, type Usage } from "./claude";
-import type { RunState } from "./pipelines";
+import type { CaptureForAgent, RunState } from "./pipelines";
 import type { ResearchBrief } from "./schemas";
 
 export async function requireUser() {
@@ -52,4 +52,35 @@ export function mergeUsage(prev: Record<string, number> | null, add: Usage): Usa
     base[k] = (prev?.[k] ?? 0) + add[k];
   }
   return base;
+}
+
+/** Chrome captures for a competitor, newest first, with short-lived signed screenshot URLs. */
+export async function loadCaptures(clientId: string, competitor: string): Promise<CaptureForAgent[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("intel_captures")
+    .select("*")
+    .eq("client_id", clientId)
+    .ilike("competitor", competitor)
+    .eq("ok", true)
+    .order("captured_at", { ascending: false })
+    .limit(12);
+  const rows = (data ?? []) as IntelCapture[];
+
+  // Keep the newest capture per source.
+  const latest = new Map<string, IntelCapture>();
+  for (const r of rows) if (!latest.has(r.source)) latest.set(r.source, r);
+
+  const out: CaptureForAgent[] = [];
+  for (const r of Array.from(latest.values())) {
+    let imageUrl: string | null = null;
+    if (r.screenshot_path) {
+      const { data: signed } = await supabase.storage
+        .from("intel")
+        .createSignedUrl(r.screenshot_path, 60 * 30);
+      imageUrl = signed?.signedUrl ?? null;
+    }
+    out.push({ source: r.source, url: r.url, text: r.page_text, imageUrl });
+  }
+  return out;
 }

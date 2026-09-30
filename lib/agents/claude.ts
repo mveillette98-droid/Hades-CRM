@@ -51,15 +51,16 @@ function getClient(): Anthropic {
       "ANTHROPIC_API_KEY is not set. Add it to .env.local (and to Vercel) to run agents."
     );
   }
-  client ??= new Anthropic();
+  // Retries 429 / 5xx / connection errors with backoff before we ever see them.
+  client ??= new Anthropic({ maxRetries: 4 });
   return client;
 }
 
 export interface StructuredCall {
   /** Stable role prompt. Cached, so keep per-run details out of it. */
   system: string;
-  /** The task: client brief, prior outputs, operator notes. */
-  prompt: string;
+  /** The task: client brief, prior outputs, operator notes. Blocks allow screenshots. */
+  prompt: string | Anthropic.Beta.BetaContentBlockParam[];
   submit: {
     name: string;
     description: string;
@@ -73,6 +74,15 @@ export interface StructuredCall {
 
 const MAX_TURNS = 10;
 const MAX_NUDGES = 2;
+
+/**
+ * Hard ceiling for one step. The route has 300s; we stop well before so the
+ * error gets recorded and the step can be retried instead of the function
+ * being killed mid-write.
+ */
+const STEP_BUDGET_MS = 250_000;
+
+export class RetryableAgentError extends AgentError {}
 
 export async function runStructured<T>(call: StructuredCall): Promise<T> {
   const anthropic = getClient();
@@ -96,10 +106,16 @@ export async function runStructured<T>(call: StructuredCall): Promise<T> {
     { role: "user", content: call.prompt },
   ];
 
+  const deadline = Date.now() + STEP_BUDGET_MS;
   let nudges = 0;
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const remaining = deadline - Date.now();
+    if (remaining < 15_000) {
+      throw new RetryableAgentError("This step ran long and was cut off. It will retry.");
+    }
     const response = await anthropic.beta.messages
-      .stream({
+      .stream(
+        {
         model: AGENT_MODEL,
         max_tokens: 32000,
         betas: ["server-side-fallback-2026-07-01"],
@@ -111,7 +127,9 @@ export async function runStructured<T>(call: StructuredCall): Promise<T> {
         tools,
         tool_choice: { type: "auto" },
         messages,
-      })
+        },
+        { timeout: remaining, maxRetries: remaining > 60_000 ? 2 : 0 }
+      )
       .finalMessage();
 
     addUsage(call.usage, response.usage);
