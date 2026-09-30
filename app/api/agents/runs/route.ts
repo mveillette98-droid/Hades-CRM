@@ -7,7 +7,7 @@ import { getClientRow, latestResearch, requireUser } from "@/lib/agents/runs";
 const body = z.object({
   clientId: z.string().uuid(),
   kind: z.enum(["research", "cold_email", "content"]),
-  instructions: z.string().trim().max(2000).optional(),
+  instructions: z.string().trim().max(12000).optional(),
 });
 
 /** Create a run. The browser then calls /advance until it's done. */

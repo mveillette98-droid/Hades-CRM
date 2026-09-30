@@ -24,9 +24,142 @@ const list = (description: string, properties: Record<string, JsonSchema>): Json
   items: obj(properties),
 });
 
+const sources = list("Sources you actually used.", {
+  title: str("Page title."),
+  url: str("URL."),
+});
+
 // ---------------------------------------------------------------------
-// Research
+// Onboarding research, step 1: the client itself
 // ---------------------------------------------------------------------
+export interface CompanyProfile {
+  summary: string;
+  niche: string;
+  services: string[];
+  size_estimate: string;
+  locations: string;
+  positioning: string;
+  current_marketing: { channel: string; observation: string; confidence: Confidence }[];
+  strengths: string[];
+  weaknesses: string[];
+  sources: { title: string; url: string }[];
+}
+
+export type Confidence = "observed" | "inferred";
+const confidence: JsonSchema = {
+  type: "string",
+  enum: ["observed", "inferred"],
+  description: "observed = you saw it in a source. inferred = your read from indirect signals.",
+};
+
+export const companyProfileSchema: JsonSchema = obj({
+  summary: str("3 to 4 sentences: who this firm is, who it serves, and how it makes money."),
+  niche: str("The specific niche(s) they serve, as narrow as the evidence supports."),
+  services: strList("Services they sell, most important first."),
+  size_estimate: str("Headcount and revenue band, with how you estimated it."),
+  locations: str("HQ and markets they serve."),
+  positioning: str("How they pitch themselves today, in one or two sentences."),
+  current_marketing: list("Every marketing channel you can find them using.", {
+    channel: str("Channel, e.g. LinkedIn organic, Google Ads, newsletter, webinars, referrals."),
+    observation: str("What they do there and how active they are."),
+    confidence,
+  }),
+  strengths: strList("What they have going for them in a sales conversation."),
+  weaknesses: strList("Gaps in their positioning, proof, or marketing we need to fix or work around."),
+  sources,
+});
+
+// ---------------------------------------------------------------------
+// Step 2: pick the 3 competitors worth studying
+// ---------------------------------------------------------------------
+export interface CompetitorPick {
+  name: string;
+  website: string;
+  why: string;
+  size_estimate: string;
+}
+
+export interface CompetitorList {
+  competitors: CompetitorPick[];
+}
+
+export const competitorListSchema: JsonSchema = obj({
+  competitors: list("Exactly 3 competitors, the ones whose marketing is most worth copying first.", {
+    name: str("Firm name."),
+    website: str("Homepage URL."),
+    why: str("Why this one: same buyer, visibly winning, and how you know."),
+    size_estimate: str("Rough headcount or revenue band."),
+  }),
+});
+
+// ---------------------------------------------------------------------
+// Step 3: channel deep dive, one competitor at a time
+// ---------------------------------------------------------------------
+export const CHANNELS = [
+  "meta_ads",
+  "linkedin_organic",
+  "linkedin_ads",
+  "google_ads",
+  "seo_content",
+  "cold_outbound",
+  "email_newsletter",
+  "events_webinars",
+  "partnerships_referrals",
+  "reviews_directories",
+] as const;
+export type Channel = (typeof CHANNELS)[number];
+
+export type ActivityLevel = "heavy" | "moderate" | "light" | "none_found" | "unknown";
+
+export interface CompetitorDive {
+  name: string;
+  website: string;
+  positioning: string;
+  offer_and_pricing: string;
+  channels: {
+    channel: Channel;
+    activity: ActivityLevel;
+    what_they_do: string;
+    evidence: string;
+    confidence: Confidence;
+  }[];
+  whats_working: string[];
+  weaknesses: string[];
+  sources: { title: string; url: string }[];
+}
+
+export const competitorDiveSchema: JsonSchema = obj({
+  name: str("Competitor name."),
+  website: str("Homepage URL."),
+  positioning: str("Their pitch, headline promise, and who they say they're for."),
+  offer_and_pricing: str("Packages, lead magnets, free offers, and pricing if public. Say 'not public' if not."),
+  channels: list("One entry for every channel in the enum, even if you found nothing.", {
+    channel: { type: "string", enum: [...CHANNELS], description: "Channel." },
+    activity: {
+      type: "string",
+      enum: ["heavy", "moderate", "light", "none_found", "unknown"],
+      description: "unknown = you couldn't check (e.g. the source needs a login). none_found = you checked and found nothing.",
+    },
+    what_they_do: str("Specifics: ad hooks and formats, post themes and cadence, outbound tells, keywords, offers."),
+    evidence: str("What you saw and where, or what signal you inferred from."),
+    confidence,
+  }),
+  whats_working: strList("What is visibly working for them and why you think so."),
+  weaknesses: strList("Where they're weak or absent that our client can exploit."),
+  sources,
+});
+
+// ---------------------------------------------------------------------
+// Step 4: synthesis. The research brief the writers use, plus the playbook
+// ---------------------------------------------------------------------
+export interface Playbook {
+  summary: string;
+  replicate: { what: string; from_competitor: string; channel: string; how_we_adapt: string }[];
+  gaps_to_exploit: string[];
+  channel_plan: { channel: string; priority: number; why: string; first_actions: string[] }[];
+  first_30_days: string[];
+}
+
 export interface ResearchBrief {
   market_summary: string;
   icp: {
@@ -38,8 +171,27 @@ export interface ResearchBrief {
   objections: { objection: string; response: string }[];
   competitors: { name: string; positioning: string; gap: string }[];
   angles: { name: string; hook: string; why_it_works: string; proof_needed: string }[];
+  playbook?: Playbook;
   sources: { title: string; url: string }[];
 }
+
+const playbookSchema: JsonSchema = obj({
+  summary: str("The strategy in 3 sentences: what we copy, what we do differently, where we start."),
+  replicate: list("Specific plays that are working for competitors and that we should run for this client.", {
+    what: str("The play, specifically (e.g. 'LinkedIn carousel breaking down a real client's cash flow fix, posted twice a week')."),
+    from_competitor: str("Which competitor it comes from."),
+    channel: str("Channel."),
+    how_we_adapt: str("How we make it ours using this client's proof, niche, and voice."),
+  }),
+  gaps_to_exploit: strList("Channels, angles, or buyer segments competitors are ignoring."),
+  channel_plan: list("Channels ranked by priority for this client.", {
+    channel: str("Channel."),
+    priority: { type: "integer", description: "1 = start now, 2 = next 60 days, 3 = later or skip." },
+    why: str("Why this priority, tied to the evidence."),
+    first_actions: strList("The first 2 or 3 concrete actions."),
+  }),
+  first_30_days: strList("Week by week, what we ship in the first 30 days."),
+});
 
 export const researchSchema: JsonSchema = obj({
   market_summary: str("3 to 5 sentences on the market this client sells into, what's changing, and where the money is."),
@@ -56,7 +208,7 @@ export const researchSchema: JsonSchema = obj({
     objection: str("The objection as the prospect would say it."),
     response: str("How to handle it in one or two sentences."),
   }),
-  competitors: list("3 to 5 alternatives the prospect is weighing, including doing nothing.", {
+  competitors: list("The competitors studied, including doing nothing if relevant.", {
     name: str("Competitor or alternative."),
     positioning: str("How they pitch themselves."),
     gap: str("Where they fall short that this client can exploit."),
@@ -67,10 +219,8 @@ export const researchSchema: JsonSchema = obj({
     why_it_works: str("Why this buyer cares, tied to a pain or trigger."),
     proof_needed: str("What proof makes it believable, and whether the client has it."),
   }),
-  sources: list("Sources you actually used.", {
-    title: str("Page title."),
-    url: str("URL."),
-  }),
+  playbook: playbookSchema,
+  sources,
 });
 
 // ---------------------------------------------------------------------

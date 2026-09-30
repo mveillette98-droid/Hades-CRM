@@ -10,6 +10,10 @@ export const clientSchema = z.object({
   name: z.string().trim().min(1, "Firm name is required"),
   vertical: z.string().trim().min(1, "Vertical is required"),
   website_url: optionalText,
+  company_size: optionalText,
+  location: optionalText,
+  known_competitors: optionalText,
+  current_marketing: optionalText,
   status: z.enum(["onboarding", "active", "paused", "churned"]),
   monthly_retainer: z
     .union([z.string(), z.number()])

@@ -21,6 +21,8 @@ interface AgentConsoleProps {
   clientId: string;
   hasResearch: boolean;
   activeRun: ActiveRun | null;
+  /** Kick off onboarding research on mount (right after the client is created). */
+  autoStartResearch?: boolean;
 }
 
 const AGENTS: {
@@ -32,8 +34,8 @@ const AGENTS: {
 }[] = [
   {
     kind: "research",
-    title: "Research",
-    blurb: "ICP, pains, objections, competitors, and outbound angles. Searches the web.",
+    title: "Onboarding research",
+    blurb: "Profiles the client, picks its top 3 competitors, dives into every channel they run, then builds the replication playbook.",
     Icon: Search,
     needsResearch: false,
   },
@@ -53,7 +55,12 @@ const AGENTS: {
   },
 ];
 
-export function AgentConsole({ clientId, hasResearch, activeRun }: AgentConsoleProps) {
+export function AgentConsole({
+  clientId,
+  hasResearch,
+  activeRun,
+  autoStartResearch,
+}: AgentConsoleProps) {
   const router = useRouter();
   const [instructions, setInstructions] = useState("");
   const [driving, setDriving] = useState<{ runId: string; step: string } | null>(null);
@@ -81,7 +88,7 @@ export function AgentConsole({ clientId, hasResearch, activeRun }: AgentConsoleP
     setElapsed(0);
     setDriving({ runId, step: firstStep });
     try {
-      for (let i = 0; i < 12 && !cancelled.current; i++) {
+      for (let i = 0; i < 20 && !cancelled.current; i++) {
         const res = await fetch(`/api/agents/runs/${runId}/advance`, { method: "POST" });
         const json = (await res.json().catch(() => ({}))) as {
           error?: string;
@@ -116,8 +123,17 @@ export function AgentConsole({ clientId, hasResearch, activeRun }: AgentConsoleP
       return;
     }
     router.refresh();
-    await drive(json.runId, kind === "research" ? "Researching the market" : "Writing");
+    await drive(json.runId, kind === "research" ? "Profiling the client" : "Writing");
   }
+
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoStartResearch || autoStarted.current || activeRun) return;
+    autoStarted.current = true;
+    router.replace(`/clients/${clientId}`, { scroll: false });
+    void start("research");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartResearch]);
 
   const busy = driving !== null;
   const pendingRun = !busy ? activeRun : null;
@@ -162,7 +178,7 @@ export function AgentConsole({ clientId, hasResearch, activeRun }: AgentConsoleP
         onChange={(e) => setInstructions(e.target.value)}
         rows={2}
         disabled={busy}
-        placeholder="Optional steer for the next run. e.g. Focus on construction firms in Texas. Tax season push. Skip the pricing angle."
+        placeholder="Optional notes or intel for the next run. Paste what you saw in the Meta or LinkedIn ad libraries, competitor ads, or a steer like: Focus on construction firms in Texas."
       />
 
       {busy && driving && (

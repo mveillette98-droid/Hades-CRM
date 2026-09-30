@@ -36,6 +36,7 @@ export function ClientForm({ mode, client, prefill, onDone }: ClientFormProps) {
   const [error, setError] = useState<string | undefined>();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<ClientStatus>(client?.status ?? "onboarding");
+  const [autoResearch, setAutoResearch] = useState(true);
 
   const initial = client ?? prefill;
 
@@ -55,7 +56,7 @@ export function ClientForm({ mode, client, prefill, onDone }: ClientFormProps) {
       }
       onDone?.();
       if (mode === "create" && result.data && "id" in result.data) {
-        router.push(`/clients/${result.data.id}`);
+        router.push(`/clients/${result.data.id}${autoResearch ? "?start=research" : ""}`);
       } else {
         router.refresh();
       }
@@ -129,6 +130,34 @@ export function ClientForm({ mode, client, prefill, onDone }: ClientFormProps) {
         </div>
       </Section>
 
+      <Section title="Onboarding intel">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Size" hint="Headcount, revenue band.">
+            <Input
+              name="company_size"
+              defaultValue={client?.company_size ?? ""}
+              placeholder="22 staff, ~$4M revenue"
+            />
+          </Field>
+          <Field label="Location and markets">
+            <Input
+              name="location"
+              defaultValue={client?.location ?? ""}
+              placeholder="Austin, TX. Serves Texas + remote"
+            />
+          </Field>
+        </div>
+        <Field
+          label="Competitors they named"
+          hint="Names or URLs. The research agent starts here, then finds stronger ones if they exist."
+        >
+          <Textarea name="known_competitors" defaultValue={client?.known_competitors ?? ""} rows={2} />
+        </Field>
+        <Field label="Current marketing" hint="What they run today and what's worked or flopped.">
+          <Textarea name="current_marketing" defaultValue={client?.current_marketing ?? ""} rows={2} />
+        </Field>
+      </Section>
+
       <Section title="The brief" accent="gold">
         <p className="-mt-1 text-xs text-muted-foreground">
           Every agent reads this. The sharper it is, the less generic the output.
@@ -157,6 +186,18 @@ export function ClientForm({ mode, client, prefill, onDone }: ClientFormProps) {
         >
           {error}
         </p>
+      )}
+
+      {mode === "create" && (
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={autoResearch}
+            onChange={(e) => setAutoResearch(e.target.checked)}
+            className="h-4 w-4 accent-crimson-600"
+          />
+          Start onboarding research as soon as I save
+        </label>
       )}
 
       <div className="flex items-center justify-end gap-2 pt-2">

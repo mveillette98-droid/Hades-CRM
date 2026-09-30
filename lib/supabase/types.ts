@@ -75,6 +75,10 @@ export interface Client {
   name: string;
   vertical: string;
   website_url: string | null;
+  company_size: string | null;
+  location: string | null;
+  known_competitors: string | null;
+  current_marketing: string | null;
   status: ClientStatus;
   monthly_retainer: number;
   offer: string | null;

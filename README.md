@@ -15,10 +15,14 @@ Each client gets one brief (offer, ICP, pains, differentiators, proof, voice, of
 
 | Agent | What it does | Tools |
 | --- | --- | --- |
-| **Research** | ICP, buying triggers, ranked pain points, objections, competitors, 3 to 5 outbound angles, sources | Web search + web fetch |
+| **Onboarding research** | 6 steps: profiles the client (niche, size, services, positioning, current marketing) → picks its top 3 competitors → deep dives each one channel by channel (Meta ads, LinkedIn organic + ads, Google ads, SEO, cold outbound, newsletter, events, partners, reviews) → builds the replication playbook (plays to copy and how we adapt them, gaps, prioritized channel plan, first 30 days) plus the research brief the writers use | Web search + web fetch |
 | **Cold email** | One 3 to 4 step sequence per top angle, with merge tags | Reads the latest research |
 | **LinkedIn content** | A week of posts for the firm owner | Reads the latest research |
 | **Critic** | Scores every draft 1 to 10 against a rubric. Under 8 goes back to the writer with specific fixes (up to 2 revisions) | Brief + rubric |
+
+Every research finding is tagged **observed** (seen in a source) or **inferred** (read from indirect signals). Meta's Ad Library and logged-in LinkedIn usually won't load for the agents, so those channels come back as "unknown" rather than guessed. Paste what you see there into the run notes box and the agents treat it as observed.
+
+Onboarding flow: New client → fill the intake (size, location, competitors they named, current marketing) and the brief → leave "Start onboarding research as soon as I save" checked → the client page opens and research starts. Results show up step by step as they land.
 
 How a run works:
 
@@ -91,6 +95,7 @@ Open the Supabase dashboard → **SQL Editor** and run each file in order:
 1. [`0001_initial_schema.sql`](./supabase/migrations/0001_initial_schema.sql)
 2. [`0002_stage_entered_at.sql`](./supabase/migrations/0002_stage_entered_at.sql)
 3. [`0003_cadence_gtm.sql`](./supabase/migrations/0003_cadence_gtm.sql): renames deal types, sources and stages for Cadence (existing rows keep their meaning), adds `leads.vertical`, and creates `clients` + `agent_runs`.
+4. [`0004_onboarding_intel.sql`](./supabase/migrations/0004_onboarding_intel.sql): onboarding intake fields on `clients`.
 
 0001 creates:
 
@@ -155,6 +160,7 @@ supabase/migrations/
   0001_initial_schema.sql
   0002_stage_entered_at.sql
   0003_cadence_gtm.sql
+  0004_onboarding_intel.sql
 ```
 
 ---
@@ -164,6 +170,9 @@ supabase/migrations/
 - [x] Pipeline, leads, list view, dashboard, sources
 - [x] Cadence rebrand + GTM deal types, channels, stages
 - [x] Client briefs + agent team (research, cold email, LinkedIn, critic)
+- [x] Onboarding research: client profile, top 3 competitor channel deep dives, replication playbook
+- [ ] Client-facing onboarding form (shareable link that fills the brief)
+- [ ] Screenshot upload for ad library intel (agents read the images)
 - [ ] List building agent (pull + enrich prospects for a client's ICP)
 - [ ] Push approved sequences to the sending tool (Instantly / Smartlead)
 - [ ] Client-facing monthly report

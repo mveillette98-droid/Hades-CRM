@@ -12,7 +12,7 @@ export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = Object.fromEntr
 ) as Record<ClientStatus, string>;
 
 export const AGENT_LABEL: Record<AgentKind, string> = {
-  research: "Market research",
+  research: "Onboarding research",
   cold_email: "Cold email campaign",
   content: "LinkedIn content",
 };

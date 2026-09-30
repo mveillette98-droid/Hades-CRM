@@ -5,15 +5,24 @@ import {
   CONTENT_SYSTEM,
   COLD_EMAIL_SYSTEM,
   CRITIC_SYSTEM,
-  RESEARCH_SYSTEM,
+  COMPETITOR_DIVE_SYSTEM,
+  COMPETITOR_PICK_SYSTEM,
+  PROFILE_SYSTEM,
+  SYNTHESIS_SYSTEM,
   clientBrief,
   operatorNotes,
 } from "./prompts";
 import {
+  companyProfileSchema,
+  competitorDiveSchema,
+  competitorListSchema,
   contentPackSchema,
   critiqueSchema,
   emailCampaignSchema,
   researchSchema,
+  type CompanyProfile,
+  type CompetitorDive,
+  type CompetitorList,
   type Critique,
   type ResearchBrief,
 } from "./schemas";
@@ -21,7 +30,7 @@ import {
 /**
  * The agent team as a resumable state machine.
  *
- *   research:          research → done
+ *   research:           profile → competitors → dive ×3 → synthesis → done
  *   cold_email/content: write → critique ⇄ revise → done
  *
  * Every call to `advance` runs exactly one agent and returns the new state,
@@ -32,7 +41,15 @@ import {
 export const SHIP_SCORE = 8;
 export const MAX_REVISIONS = 2;
 
-export type Phase = "research" | "write" | "critique" | "revise" | "done";
+export type Phase =
+  | "profile"
+  | "competitors"
+  | "dive"
+  | "synthesis"
+  | "write"
+  | "critique"
+  | "revise"
+  | "done";
 
 export interface CriticRound {
   round: number;
@@ -45,7 +62,11 @@ export interface CriticRound {
 export interface RunState {
   phase: Phase;
   research_run_id?: string;
-  /** research brief (research runs) */
+  /** research runs: client profile, competitor picks, one dive per competitor */
+  profile?: CompanyProfile;
+  competitors?: CompetitorList["competitors"];
+  dives?: CompetitorDive[];
+  /** research runs: the synthesized brief + playbook the writers use */
   brief?: ResearchBrief;
   /** writer draft (cold_email / content runs) */
   draft?: unknown;
@@ -64,7 +85,7 @@ export interface AdvanceInput {
 
 export function initialState(kind: AgentKind, researchRunId?: string): RunState {
   return kind === "research"
-    ? { phase: "research" }
+    ? { phase: "profile", dives: [] }
     : { phase: "write", research_run_id: researchRunId, rounds: [] };
 }
 
@@ -72,8 +93,17 @@ export function initialState(kind: AgentKind, researchRunId?: string): RunState 
 export function pendingStepLabel(kind: AgentKind, state: RunState): string {
   const what = kind === "content" ? "LinkedIn posts" : "cold email sequences";
   switch (state.phase) {
-    case "research":
-      return "Researching the market";
+    case "profile":
+      return "Profiling the client";
+    case "competitors":
+      return "Picking the top 3 competitors";
+    case "dive": {
+      const i = state.dives?.length ?? 0;
+      const name = state.competitors?.[i]?.name ?? "competitor";
+      return `Deep dive: ${name} (${i + 1} of ${state.competitors?.length ?? 3})`;
+    }
+    case "synthesis":
+      return "Building the replication playbook";
     case "write":
       return `Writing ${what}`;
     case "critique":
@@ -130,21 +160,7 @@ export async function advance(input: AdvanceInput): Promise<RunState> {
   const brief = clientBrief(client);
   const notes = operatorNotes(instructions);
 
-  if (kind === "research") {
-    const result = await runStructured<ResearchBrief>({
-      system: RESEARCH_SYSTEM,
-      prompt: `${brief}${notes}\n\nBuild the research brief for this client.`,
-      submit: {
-        name: "submit_research",
-        description: "Submit the finished research brief.",
-        schema: researchSchema,
-      },
-      web: true,
-      effort: "high",
-      usage,
-    });
-    return { phase: "done", brief: result };
-  }
+  if (kind === "research") return advanceResearch(state, brief, notes, usage);
 
   if (!research) throw new Error("This run needs a research brief first.");
   const writer = WRITERS[kind];
@@ -210,6 +226,98 @@ export async function advance(input: AdvanceInput): Promise<RunState> {
         usage,
       });
       return { ...state, phase: "critique", draft };
+    }
+
+    default:
+      return state;
+  }
+}
+
+// ---------------------------------------------------------------------
+// Onboarding research
+// ---------------------------------------------------------------------
+async function advanceResearch(
+  state: RunState,
+  brief: string,
+  notes: string,
+  usage: Usage
+): Promise<RunState> {
+  const json = (label: string, v: unknown) => `<${label}>\n${JSON.stringify(v, null, 2)}\n</${label}>`;
+
+  switch (state.phase) {
+    case "profile": {
+      const profile = await runStructured<CompanyProfile>({
+        system: PROFILE_SYSTEM,
+        prompt: `${brief}${notes}\n\nBuild the profile of this client firm.`,
+        submit: {
+          name: "submit_profile",
+          description: "Submit the client firm's profile.",
+          schema: companyProfileSchema,
+        },
+        web: { searches: 8, fetches: 6 },
+        effort: "high",
+        usage,
+      });
+      return { ...state, profile, phase: "competitors" };
+    }
+
+    case "competitors": {
+      const picked = await runStructured<CompetitorList>({
+        system: COMPETITOR_PICK_SYSTEM,
+        prompt: `${brief}${notes}\n\n${json("client_profile", state.profile)}\n\nPick the 3 competitors to study.`,
+        submit: {
+          name: "submit_competitors",
+          description: "Submit the 3 competitors to deep dive.",
+          schema: competitorListSchema,
+        },
+        web: { searches: 8, fetches: 4 },
+        effort: "high",
+        usage,
+      });
+      const competitors = picked.competitors.slice(0, 3);
+      return { ...state, competitors, dives: [], phase: competitors.length ? "dive" : "synthesis" };
+    }
+
+    case "dive": {
+      const dives = state.dives ?? [];
+      const target = state.competitors?.[dives.length];
+      if (!target) return { ...state, phase: "synthesis" };
+      const dive = await runStructured<CompetitorDive>({
+        system: COMPETITOR_DIVE_SYSTEM,
+        prompt: `${brief}${notes}\n\n${json("client_profile", state.profile)}\n\n${json(
+          "competitor",
+          target
+        )}\n\nDo the deep dive on ${target.name}.`,
+        submit: {
+          name: "submit_dive",
+          description: "Submit the channel-by-channel deep dive on this competitor.",
+          schema: competitorDiveSchema,
+        },
+        web: { searches: 10, fetches: 8 },
+        effort: "high",
+        usage,
+      });
+      const next = [...dives, dive];
+      const more = next.length < (state.competitors?.length ?? 0);
+      return { ...state, dives: next, phase: more ? "dive" : "synthesis" };
+    }
+
+    case "synthesis": {
+      const research = await runStructured<ResearchBrief>({
+        system: SYNTHESIS_SYSTEM,
+        prompt: `${brief}${notes}\n\n${json("client_profile", state.profile)}\n\n${json(
+          "competitor_dives",
+          state.dives
+        )}\n\nBuild the research brief and the replication playbook.`,
+        submit: {
+          name: "submit_research",
+          description: "Submit the research brief with the replication playbook.",
+          schema: researchSchema,
+        },
+        effort: "high",
+        usage,
+      });
+      return { ...state, brief: research, phase: "done" };
     }
 
     default:

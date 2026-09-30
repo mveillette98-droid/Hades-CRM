@@ -65,8 +65,8 @@ export interface StructuredCall {
     description: string;
     schema: Record<string, unknown>;
   };
-  /** Give the agent web search + fetch (research agent). */
-  web?: boolean;
+  /** Give the agent web search + fetch, with per-call caps. */
+  web?: { searches: number; fetches: number };
   effort?: Effort;
   usage: Usage;
 }
@@ -87,8 +87,8 @@ export async function runStructured<T>(call: StructuredCall): Promise<T> {
   ];
   if (call.web) {
     tools.push(
-      { type: "web_search_20260209", name: "web_search", max_uses: 8 },
-      { type: "web_fetch_20260209", name: "web_fetch", max_uses: 6 }
+      { type: "web_search_20260209", name: "web_search", max_uses: call.web.searches },
+      { type: "web_fetch_20260209", name: "web_fetch", max_uses: call.web.fetches }
     );
   }
 

@@ -18,12 +18,19 @@ import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+const INTAKE_FIELDS = [
+  { key: "company_size", label: "Size" },
+  { key: "location", label: "Location" },
+  { key: "known_competitors", label: "Competitors they named" },
+  { key: "current_marketing", label: "Current marketing" },
+] as const;
+
 export default async function ClientPage({
   params,
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { run?: string };
+  searchParams: { run?: string; start?: string };
 }) {
   const [client, runs, role] = await Promise.all([
     getClient(params.id),
@@ -38,8 +45,8 @@ export default async function ClientPage({
   const activeRun = runs.find((r) => r.status === "running") ?? null;
   const selected =
     runs.find((r) => r.id === searchParams.run) ??
-    runs.find((r) => r.status === "succeeded") ??
     activeRun ??
+    runs.find((r) => r.status === "succeeded") ??
     null;
 
   const emptyBriefFields = BRIEF_FIELDS.filter((f) => !client[f.key]?.trim());
@@ -115,6 +122,7 @@ export default async function ClientPage({
                 <AgentConsole
                   clientId={client.id}
                   hasResearch={hasResearch}
+                  autoStartResearch={searchParams.start === "research" && runs.length === 0}
                   activeRun={
                     activeRun
                       ? { id: activeRun.id, kind: activeRun.kind, step: activeRun.step, error: activeRun.error }
@@ -161,6 +169,16 @@ export default async function ClientPage({
               </CardHeader>
               <CardContent>
                 <dl className="space-y-4 text-sm">
+                  {INTAKE_FIELDS.map((f) => (
+                    <div key={f.key}>
+                      <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                        {f.label}
+                      </dt>
+                      <dd className="mt-1 whitespace-pre-wrap text-foreground/90">
+                        {client[f.key]?.trim() || <span className="text-muted-foreground">Not set</span>}
+                      </dd>
+                    </div>
+                  ))}
                   {BRIEF_FIELDS.map((f) => (
                     <div key={f.key}>
                       <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
