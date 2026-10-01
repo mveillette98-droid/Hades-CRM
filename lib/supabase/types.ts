@@ -132,6 +132,115 @@ export interface IntelCapture {
   captured_at: string;
 }
 
+export type MailboxStatus = "active" | "paused" | "error";
+
+export interface Mailbox {
+  id: string;
+  client_id: string | null;
+  email: string;
+  from_name: string;
+  username: string;
+  smtp_host: string;
+  smtp_port: number;
+  imap_host: string | null;
+  imap_port: number;
+  signature: string | null;
+  daily_limit: number;
+  min_gap_seconds: number;
+  status: MailboxStatus;
+  last_error: string | null;
+  last_sent_at: string | null;
+  imap_uid_validity: number | null;
+  imap_last_uid: number | null;
+  last_checked_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CampaignStatus = "draft" | "active" | "paused" | "completed";
+
+export interface CampaignStep {
+  step: number;
+  day: number;
+  subject: string;
+  body: string;
+}
+
+export interface Campaign {
+  id: string;
+  client_id: string;
+  source_run_id: string | null;
+  name: string;
+  status: CampaignStatus;
+  timezone: string;
+  window_start: number;
+  window_end: number;
+  send_days: number[];
+  thread_followups: boolean;
+  footer: string | null;
+  steps: CampaignStep[];
+  started_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type OutboundLeadStatus =
+  | "queued"
+  | "active"
+  | "completed"
+  | "replied"
+  | "bounced"
+  | "unsubscribed"
+  | "failed"
+  | "paused";
+
+export interface CampaignLead {
+  id: string;
+  campaign_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  company: string | null;
+  title: string | null;
+  personal_line: string | null;
+  fields: Record<string, string>;
+  status: OutboundLeadStatus;
+  current_step: number;
+  next_send_at: string;
+  mailbox_id: string | null;
+  thread_subject: string | null;
+  last_message_id: string | null;
+  message_ids: string[];
+  attempts: number;
+  last_error: string | null;
+  reply_label: string | null;
+  locked_until: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EmailKind = "sent" | "reply" | "auto_reply" | "unsubscribe" | "bounce";
+
+export interface EmailMessage {
+  id: string;
+  campaign_id: string | null;
+  lead_id: string | null;
+  mailbox_id: string | null;
+  direction: "outbound" | "inbound";
+  kind: EmailKind;
+  step: number | null;
+  message_id: string | null;
+  in_reply_to: string | null;
+  from_email: string | null;
+  to_email: string | null;
+  subject: string | null;
+  body_text: string | null;
+  handled: boolean;
+  sent_at: string;
+}
+
 export interface Activity {
   id: string;
   lead_id: string;

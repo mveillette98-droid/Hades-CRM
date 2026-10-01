@@ -11,6 +11,8 @@ import { RunHistory } from "@/components/clients/run-history";
 import { RunOutput } from "@/components/clients/run-output";
 import { ApproveToggle } from "@/components/clients/approve-toggle";
 import { getClient, listRuns } from "@/lib/clients/queries";
+import { listCampaigns } from "@/lib/outbound/queries";
+import { CAMPAIGN_STATUS_LABEL } from "@/lib/outbound/labels";
 import { currentRole } from "@/lib/leads/queries";
 import { AGENT_LABEL, BRIEF_FIELDS, CLIENT_STATUS_LABEL } from "@/lib/clients/labels";
 import type { RunState } from "@/lib/agents/pipelines";
@@ -32,10 +34,11 @@ export default async function ClientPage({
   params: { id: string };
   searchParams: { run?: string; start?: string };
 }) {
-  const [client, runs, role] = await Promise.all([
+  const [client, runs, role, campaigns] = await Promise.all([
     getClient(params.id),
     listRuns(params.id),
     currentRole(),
+    listCampaigns(params.id),
   ]);
   if (!client) notFound();
 
@@ -170,6 +173,27 @@ export default async function ClientPage({
                 <RunHistory runs={runs} clientId={client.id} selectedId={selected?.id ?? null} />
               </CardContent>
             </Card>
+
+            {campaigns.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Campaigns</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {campaigns.map((c) => (
+                    <Link key={c.id} href={`/outbound/${c.id}`} className="block rounded-md border border-ink-700 px-3 py-2 hover:border-crimson-600/60">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-medium">{c.name}</p>
+                        <Badge variant={c.status === "active" ? "gold" : "outline"}>{CAMPAIGN_STATUS_LABEL[c.status]}</Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {c.stats.sent} sent · {c.stats.replied} replies · {c.stats.bounced} bounced
+                      </p>
+                    </Link>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>

@@ -10,6 +10,7 @@ import {
   Megaphone,
   Settings,
   Briefcase,
+  Send,
 } from "lucide-react";
 import { CadenceLogo } from "@/components/cadence-logo";
 import { PulseDot } from "@/components/pulse-dot";
@@ -40,7 +41,10 @@ const sections: { title: string; items: NavItem[] }[] = [
   },
   {
     title: "Deliver",
-    items: [{ href: "/clients", label: "Clients", icon: Briefcase }],
+    items: [
+      { href: "/clients",  label: "Clients",  icon: Briefcase },
+      { href: "/outbound", label: "Outbound", icon: Send },
+    ],
   },
   {
     title: "Workspace",

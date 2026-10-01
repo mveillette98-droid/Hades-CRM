@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ExternalLink, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "./copy-button";
+import { CreateCampaignButton } from "@/components/outbound/create-campaign-button";
 import type { CriticRound, RunState } from "@/lib/agents/pipelines";
 import type {
   ActivityLevel,
@@ -55,7 +56,7 @@ export function RunOutput({ run }: { run: AgentRun }) {
     <div className="space-y-6">
       <CriticSummary rounds={state.rounds ?? []} />
       {run.kind === "cold_email" ? (
-        <CampaignView campaign={state.draft as EmailCampaign} />
+        <CampaignView campaign={state.draft as EmailCampaign} runId={run.id} />
       ) : (
         <ContentView pack={state.draft as ContentPack} />
       )}
@@ -501,7 +502,7 @@ function CriticSummary({ rounds }: { rounds: CriticRound[] }) {
 // ---------------------------------------------------------------------
 // Cold email
 // ---------------------------------------------------------------------
-function CampaignView({ campaign }: { campaign: EmailCampaign }) {
+function CampaignView({ campaign, runId }: { campaign: EmailCampaign; runId: string }) {
   return (
     <div className="space-y-6">
       {campaign.sequences.map((seq, i) => {
@@ -513,7 +514,12 @@ function CampaignView({ campaign }: { campaign: EmailCampaign }) {
             key={i}
             title={`Sequence ${i + 1}: ${seq.angle}`}
             accent="gold"
-            action={<CopyButton text={all} label="Copy sequence" />}
+            action={
+              <div className="flex items-center gap-1">
+                <CopyButton text={all} label="Copy sequence" />
+                <CreateCampaignButton runId={runId} sequenceIndex={i} />
+              </div>
+            }
           >
             <p className="mb-3 text-xs text-muted-foreground">To: {seq.audience}</p>
             <div className="space-y-3">

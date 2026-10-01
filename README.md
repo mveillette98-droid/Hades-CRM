@@ -52,6 +52,31 @@ Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` (laptop only, never in Vercel 
 
 Heads up: automated browsing of LinkedIn and Facebook is against their terms. Keep volume low (3 competitors per client is fine), use a secondary account where you can, or skip capture and paste what you see into the run notes instead.
 
+### Outbound: Cadence's own cold email sender
+
+No Instantly, no Smartlead. Campaigns send from your own inboxes (Google Workspace, Microsoft 365, Zoho, or any SMTP + IMAP) and replies come back into `/outbound`.
+
+1. **Inboxes.** On `/outbound`, add a sending inbox with an app password (stored AES-256-GCM encrypted with `CADENCE_SECRET_KEY`) and hit **Test**. Use a separate sending domain, never the client's main one.
+2. **Campaign.** On a client's cold email run, hit **Send with Cadence** on a sequence. That creates a draft campaign with the emails filled in. Edit the copy, pick inboxes, set days and hours in the prospects' time zone.
+3. **Leads.** Paste or upload a CSV (Apollo, Clay, Sheets). Common column names map on their own; any other column becomes a `{{column_name}}` merge tag. Anyone already in another campaign for that client, or on the do-not-email list, is skipped.
+4. **Send.** Hit **Start sending**, then run the sender on the laptop:
+
+```bash
+npm run sender           # leave it running, one pass a minute
+npm run sender -- --once # single pass
+```
+
+What the sender does:
+
+- **Caps and pacing.** Each inbox has a rolling 24h limit (default 30) and a minimum gap between sends with jitter. Follow-ups go before new leads.
+- **Windows.** Sends only on chosen days and hours, in the campaign's time zone.
+- **Threads.** Follow-ups reply in the same thread (`Re:` + In-Reply-To/References) from the inbox that sent email 1.
+- **Merge tags.** `{{first_name}}`, `{{company}}`, `{{personal_line}}`, any CSV column, fallbacks like `{{first_name|there}}`. A lead missing a tag is held back with the reason, never sent "Hi ,".
+- **Replies.** Reads each inbox over IMAP every few minutes. A reply stops that lead and shows up for tagging (interested, booked, not now). Out-of-offices don't stop the sequence. Unsubscribe replies and bounces go on the do-not-email list.
+- **Failures.** A bad login flags the inbox and stops using it. A hard bounce at send time suppresses the address. Anything else retries 3 times, then fails with the error shown on the lead.
+
+What it doesn't do: **warm up inboxes.** Warm every new inbox for 2 to 3 weeks with a warmup service before it sends a campaign, keep each inbox at 30 a day or less, and verify lists before import. The campaign page warns when bounces pass 3%.
+
 ### How runs stay up
 
 - **One step per request.** Each agent call is its own HTTP request with state saved after it, so a crash loses one step, not the run.
@@ -128,6 +153,7 @@ Open the Supabase dashboard → **SQL Editor** and run each file in order:
 3. [`0003_cadence_gtm.sql`](./supabase/migrations/0003_cadence_gtm.sql): renames deal types, sources and stages for Cadence (existing rows keep their meaning), adds `leads.vertical`, and creates `clients` + `agent_runs`.
 4. [`0004_onboarding_intel.sql`](./supabase/migrations/0004_onboarding_intel.sql): onboarding intake fields on `clients`.
 5. [`0005_capture_report_hardening.sql`](./supabase/migrations/0005_capture_report_hardening.sql): run lock, `intel_captures` table, private `intel` storage bucket for screenshots.
+6. [`0006_outbound.sql`](./supabase/migrations/0006_outbound.sql): the cold email sender: inboxes, campaigns, campaign leads, sent and received emails, the do-not-email list.
 
 0001 creates:
 
@@ -211,7 +237,7 @@ scripts/
 - [x] Chrome capture agent + screenshots in the deep dives
 - [x] Market analysis report with scripts, printable to PDF
 - [ ] List building agent (pull + enrich prospects for a client's ICP)
-- [ ] Push approved sequences to the sending tool (Instantly / Smartlead)
+- [x] Cadence's own cold email sender (inboxes, campaigns, reply tracking)
 - [ ] Client-facing monthly report
 - [ ] Text the agent team (Telegram or SMS)
 
@@ -225,4 +251,6 @@ npm run build      # production build
 npm run start      # run the built app
 npm run typecheck  # tsc --noEmit
 npm run lint       # next lint
+npm run capture    # Chrome capture agent (laptop)
+npm run sender     # cold email sender (laptop, leave running)
 ```
