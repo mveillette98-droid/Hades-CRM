@@ -58,7 +58,7 @@ No Instantly, no Smartlead. Campaigns send from your own inboxes (Google Workspa
 
 1. **Inboxes.** On `/outbound`, add a sending inbox with an app password (stored AES-256-GCM encrypted with `CADENCE_SECRET_KEY`) and hit **Test**. Use a separate sending domain, never the client's main one.
 2. **Campaign.** On a client's cold email run, hit **Send with Cadence** on a sequence. That creates a draft campaign with the emails filled in. Edit the copy, pick inboxes, set days and hours in the prospects' time zone.
-3. **Leads.** Paste or upload a CSV (Apollo, Clay, Sheets). Common column names map on their own; any other column becomes a `{{column_name}}` merge tag. Anyone already in another campaign for that client, or on the do-not-email list, is skipped.
+3. **Leads.** Build the list on the client's **Contacts** page: search Apollo by title, location, company size and keywords (titles prefill from the research agent's buyer titles), or import a CSV. Verify emails there (MillionVerifier), then add the people you pick to a campaign. Invalid emails never go in, catch-all only if you say so, and the launch checklist's "list verified" ticks itself when every lead is verified. You can also paste or upload a CSV (Apollo, Clay, Sheets). Common column names map on their own; any other column becomes a `{{column_name}}` merge tag. Anyone already in another campaign for that client, or on the do-not-email list, is skipped.
 4. **Send.** Hit **Start sending**, then run the sender on the laptop:
 
 ```bash
@@ -157,6 +157,7 @@ Open the Supabase dashboard → **SQL Editor** and run each file in order:
 5. [`0005_capture_report_hardening.sql`](./supabase/migrations/0005_capture_report_hardening.sql): run lock, `intel_captures` table, private `intel` storage bucket for screenshots.
 6. [`0006_outbound.sql`](./supabase/migrations/0006_outbound.sql): the cold email sender: inboxes, campaigns, campaign leads, sent and received emails, the do-not-email list.
 7. [`0007_outbound_setup.sql`](./supabase/migrations/0007_outbound_setup.sql): warmup tracking, login checks, launch sign-offs, saved domain checks.
+8. [`0008_contacts.sql`](./supabase/migrations/0008_contacts.sql): a contact list per client, linked to campaign leads.
 
 0001 creates:
 

@@ -137,6 +137,12 @@ export default async function CampaignPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
+                <p className="text-sm">
+                  <Link href={`/clients/${client.id}/contacts`} className="font-medium text-gold-300 hover:underline">
+                    Add from {client.name}&rsquo;s contacts
+                  </Link>{" "}
+                  <span className="text-muted-foreground">(Apollo, verified emails), or paste a CSV straight in:</span>
+                </p>
                 <LeadImport campaignId={campaign.id} />
 
                 <div className="flex flex-wrap gap-1.5">

@@ -43,6 +43,7 @@ export interface ReadinessInput {
   mailboxes: ReadinessMailbox[]; // the ones picked for this campaign
   domains: ReadinessDomain[];
   openLeads: number; // queued + active
+  verifiedLeads?: number; // open leads whose contact passed email verification
   clientDomain: string | null;
   now?: Date;
 }
@@ -157,13 +158,16 @@ export function launchChecklist(input: ReadinessInput): { items: ChecklistItem[]
     input.openLeads > 0 ? "pass" : "fail",
     input.openLeads > 0 ? `${input.openLeads.toLocaleString("en-US")} leads waiting.` : "Import leads first."
   );
+  const allVerified = input.openLeads > 0 && (input.verifiedLeads ?? 0) >= input.openLeads;
   add(
     "verified",
     "List verified",
-    c.list_verified_at ? "pass" : "fail",
-    c.list_verified_at
+    c.list_verified_at || allVerified ? "pass" : "fail",
+    allVerified
+      ? "Every lead's email passed verification in Contacts."
+      : c.list_verified_at
       ? "Emails were verified before import."
-      : "Run the list through a verifier (MillionVerifier, NeverBounce) and import only valid emails, then tick the box. Bounces over 3% burn inboxes."
+      : `${(input.verifiedLeads ?? 0).toLocaleString("en-US")} of ${input.openLeads.toLocaleString("en-US")} leads verified. Verify them in Contacts, or verify the list elsewhere and tick the box. Bounces over 3% burn inboxes.`
   );
 
   // Last look

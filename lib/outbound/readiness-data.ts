@@ -32,11 +32,19 @@ export async function loadChecklist(supabase: SupabaseClient, campaignId: string
     .eq("campaign_id", campaignId)
     .in("status", ["queued", "active"]);
 
+  const { count: verifiedLeads } = await supabase
+    .from("campaign_leads")
+    .select("id, contacts!inner(email_status)", { count: "exact", head: true })
+    .eq("campaign_id", campaignId)
+    .in("status", ["queued", "active"])
+    .eq("contacts.email_status", "valid");
+
   return launchChecklist({
     campaign: c,
     mailboxes,
     domains: (checks ?? []) as { domain: string; ok: boolean; checked_at: string }[],
     openLeads: openLeads ?? 0,
+    verifiedLeads: verifiedLeads ?? 0,
     clientDomain: hostOf(c.clients?.website_url),
   });
 }

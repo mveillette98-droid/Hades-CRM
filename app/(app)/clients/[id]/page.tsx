@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Globe } from "lucide-react";
+import { ArrowLeft, Globe, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { contactStats } from "@/lib/contacts/queries";
 import { TopBar } from "@/components/layout/top-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,11 +36,12 @@ export default async function ClientPage({
   params: { id: string };
   searchParams: { run?: string; start?: string };
 }) {
-  const [client, runs, role, campaigns] = await Promise.all([
+  const [client, runs, role, campaigns, contacts] = await Promise.all([
     getClient(params.id),
     listRuns(params.id),
     currentRole(),
     listCampaigns(params.id),
+    contactStats(params.id),
   ]);
   if (!client) notFound();
 
@@ -67,6 +70,12 @@ export default async function ClientPage({
             All clients
           </Link>
           <div className="flex items-center gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/clients/${client.id}/contacts`}>
+                <Users className="h-3.5 w-3.5" />
+                Contacts ({contacts.total.toLocaleString("en-US")})
+              </Link>
+            </Button>
             <ClientSheet mode="edit" client={client} />
             {role === "admin" && <DeleteClientButton clientId={client.id} name={client.name} />}
           </div>

@@ -205,6 +205,7 @@ export type OutboundLeadStatus =
 export interface CampaignLead {
   id: string;
   campaign_id: string;
+  contact_id: string | null;
   email: string;
   first_name: string | null;
   last_name: string | null;
@@ -233,6 +234,35 @@ export interface DomainCheckRow {
   ok: boolean;
   results: import("@/lib/outbound/dns").DomainReport;
   checked_at: string;
+}
+
+export type ContactEmailStatus = "unverified" | "valid" | "risky" | "invalid" | "unknown";
+
+export interface Contact {
+  id: string;
+  client_id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  company: string | null;
+  company_domain: string | null;
+  linkedin_url: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  employees: number | null;
+  industry: string | null;
+  personal_line: string | null;
+  fields: Record<string, string>;
+  list_name: string | null;
+  source: "csv" | "apollo" | "manual";
+  apollo_id: string | null;
+  email_status: ContactEmailStatus;
+  verified_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export type EmailKind = "sent" | "reply" | "auto_reply" | "unsubscribe" | "bounce";

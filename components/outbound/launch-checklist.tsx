@@ -31,7 +31,7 @@ export function LaunchChecklist({
       </p>
       <ul className="space-y-3">
         {items.map((i) => {
-          const sign = SIGNOFF[i.key];
+          const sign = i.key === "verified" && i.detail.startsWith("Every lead") ? undefined : SIGNOFF[i.key];
           return (
             <li key={i.key} className="flex gap-2.5">
               <StatusIcon status={i.status} />
