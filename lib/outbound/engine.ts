@@ -9,6 +9,7 @@ import {
   extractAddress,
   stripQuoted,
 } from "./classify";
+import { isWarm } from "./readiness";
 import type { FetchedEmail, Inbox, Mailer, MailboxConn } from "./transport";
 
 /**
@@ -26,6 +27,8 @@ import type { FetchedEmail, Inbox, Mailer, MailboxConn } from "./transport";
  *   - a thread always stays on the inbox that sent email 1
  *   - follow-ups reply in the same thread unless the campaign turns it off
  *   - a missing merge tag blocks the send instead of sending "Hi ,"
+ *   - an inbox isn't used until it has warmed for its minimum days
+ *   - an inbox whose bounces pass 3% over 7 days pauses itself
  */
 
 export interface EngineDeps {
@@ -51,6 +54,8 @@ interface MailboxRow {
   daily_limit: number;
   min_gap_seconds: number;
   status: "active" | "paused" | "error";
+  warmup_started_on: string | null;
+  warmup_min_days: number;
   last_sent_at: string | null;
   imap_uid_validity: number | null;
   imap_last_uid: number | null;
@@ -108,6 +113,8 @@ const DUE_BATCH = 25;
 const CHECK_EVERY_MS = 3 * 60 * 1000;
 const CLAIM_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 4;
+const BOUNCE_LIMIT = 0.03;
+const BOUNCE_MIN_SENDS = 20;
 
 export async function tick(deps: EngineDeps): Promise<TickResult> {
   const result: TickResult = { sent: 0, inbound: 0, errors: [] };
@@ -192,6 +199,8 @@ async function loadMailboxes(deps: EngineDeps, result: TickResult): Promise<Map<
       .eq("kind", "sent")
       .gte("sent_at", since);
 
+    if (row.status === "active") await bounceGuard(deps, row, t);
+
     const lastSent = row.last_sent_at ? new Date(row.last_sent_at).getTime() : 0;
     out.set(row.id, {
       row,
@@ -203,13 +212,43 @@ async function loadMailboxes(deps: EngineDeps, result: TickResult): Promise<Map<
   return out;
 }
 
+/** Pause an inbox whose bounce rate over the last 7 days passes 3%. */
+async function bounceGuard(deps: EngineDeps, row: MailboxRow, t: number) {
+  const { db } = deps;
+  const week = new Date(t - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const count = async (kind: string) => {
+    const { count } = await db
+      .from("email_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("mailbox_id", row.id)
+      .eq("kind", kind)
+      .gte("sent_at", week);
+    return count ?? 0;
+  };
+  const sent = await count("sent");
+  if (sent < BOUNCE_MIN_SENDS) return;
+  const bounced = await count("bounce");
+  if (bounced / sent <= BOUNCE_LIMIT) return;
+  const msg = `Paused automatically: ${bounced} bounces from ${sent} sends in 7 days (${Math.round((bounced / sent) * 1000) / 10}%, limit 3%). Clean the list, then resume.`;
+  await db.from("mailboxes").update({ status: "paused", last_error: msg }).eq("id", row.id);
+  row.status = "paused";
+  log(deps, `${row.email}: ${msg}`);
+}
+
 async function markMailboxError(deps: EngineDeps, id: string, message: string) {
   await deps.db.from("mailboxes").update({ status: "error", last_error: message }).eq("id", id);
   log(deps, `mailbox ${id}: ${message}`);
 }
 
 function ready(box: BoxState | undefined, t: number): box is BoxState {
-  return !!box && !!box.conn && box.row.status === "active" && box.remaining > 0 && box.nextFreeAt <= t;
+  return (
+    !!box &&
+    !!box.conn &&
+    box.row.status === "active" &&
+    isWarm(box.row, new Date(t)) &&
+    box.remaining > 0 &&
+    box.nextFreeAt <= t
+  );
 }
 
 // ---------------------------------------------------------------------

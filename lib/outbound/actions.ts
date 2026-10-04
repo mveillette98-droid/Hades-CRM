@@ -13,6 +13,8 @@ import { emailDomain } from "./classify";
 import { isValidTimezone } from "./schedule";
 import { campaignSettingsSchema, mailboxSchema, stepsSchema } from "./schema";
 import { imapInbox, smtpMailer, type MailboxConn } from "./transport";
+import { checkDomain, providerFor } from "./dns";
+import { loadChecklist } from "./readiness-data";
 import { randomUUID } from "node:crypto";
 
 async function requireUser() {
@@ -152,8 +154,12 @@ export async function testMailbox(id: string): Promise<ActionResult<{ message: s
       return { ok: false, error: `Sending works. Reading replies failed: ${errMessage(e)}` };
     }
   }
-  await supabase.from("mailboxes").update({ status: "active", last_error: null }).eq("id", id);
+  await supabase
+    .from("mailboxes")
+    .update({ status: "active", last_error: null, verified_at: new Date().toISOString() })
+    .eq("id", id);
   revalidatePath("/outbound");
+  revalidatePath("/outbound/setup");
   return {
     ok: true,
     data: {
@@ -280,7 +286,10 @@ export async function updateCampaignSteps(id: string, steps: CampaignStep[]): Pr
   if (!normalized[0]?.subject.trim()) return { ok: false, error: "Email 1 needs a subject." };
 
   const { supabase } = await requireUser();
-  const { error } = await supabase.from("campaigns").update({ steps: normalized }).eq("id", id);
+  const { error } = await supabase
+    .from("campaigns")
+    .update({ steps: normalized, copy_approved_at: null })
+    .eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/outbound/${id}`);
   return { ok: true };
@@ -299,19 +308,14 @@ export async function setCampaignStatus(
   if (!campaign) return { ok: false, error: "Campaign not found." };
 
   if (status === "active") {
-    if (normalizeSteps(campaign.steps ?? []).length === 0) {
-      return { ok: false, error: "Add at least one email before starting." };
+    const checklist = await loadChecklist(supabase, id);
+    const blocking = checklist?.items.filter((i) => i.status === "fail") ?? [];
+    if (!checklist || blocking.length > 0) {
+      return {
+        ok: false,
+        error: `Not ready to send: ${blocking.map((i) => i.label.toLowerCase()).join(", ")}. See the launch checklist.`,
+      };
     }
-    const [{ count: boxes }, { count: leads }] = await Promise.all([
-      supabase.from("campaign_mailboxes").select("mailbox_id", { count: "exact", head: true }).eq("campaign_id", id),
-      supabase
-        .from("campaign_leads")
-        .select("id", { count: "exact", head: true })
-        .eq("campaign_id", id)
-        .in("status", ["queued", "active"]),
-    ]);
-    if (!boxes) return { ok: false, error: "Pick at least one sending mailbox in Settings." };
-    if (!leads) return { ok: false, error: "Import leads before starting." };
   }
 
   const { error } = await supabase
@@ -530,5 +534,65 @@ export async function sendTestEmail(
   } catch (e) {
     return { ok: false, error: `Send failed: ${errMessage(e)}` };
   }
-  return { ok: true, data: { message: `Sent email ${stepIndex + 1} to ${to} from ${loaded.row.email}.` } };
+  await supabase.from("campaigns").update({ test_sent_at: new Date().toISOString() }).eq("id", campaignId);
+  revalidatePath(`/outbound/${campaignId}`);
+  return { ok: true, data: { message: `Sent email ${stepIndex + 1} to ${to} from ${loaded.row.email}. Check inbox vs spam.` } };
+}
+
+// ---------------------------------------------------------------------
+// Setup: domain checks, warmup, launch sign-offs
+// ---------------------------------------------------------------------
+/** Check SPF, DKIM, DMARC and MX for every sending domain (or one). */
+export async function checkSendingDomains(only?: string): Promise<ActionResult<{ checked: number; failing: number }>> {
+  const { supabase } = await requireUser();
+  const { data } = await supabase.from("mailboxes").select("email, smtp_host");
+  const byDomain = new Map<string, string>();
+  for (const m of (data ?? []) as { email: string; smtp_host: string }[]) {
+    const d = emailDomain(m.email);
+    if (d && !byDomain.has(d)) byDomain.set(d, m.smtp_host);
+  }
+  const domains = Array.from(byDomain.keys()).filter((d) => !only || d === only);
+  if (domains.length === 0) return { ok: false, error: "Add a sending inbox first." };
+
+  let failing = 0;
+  for (const d of domains) {
+    const report = await checkDomain(d, providerFor(byDomain.get(d)!));
+    if (!report.ok) failing++;
+    const { error } = await supabase.from("domain_checks").upsert({
+      domain: d,
+      provider: report.provider,
+      ok: report.ok,
+      results: report,
+      checked_at: new Date().toISOString(),
+    });
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath("/outbound/setup");
+  revalidatePath("/outbound");
+  return { ok: true, data: { checked: domains.length, failing } };
+}
+
+export async function setWarmupStart(mailboxId: string, date: string | null): Promise<ActionResult> {
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Use a date." };
+  if (date && Date.parse(date) > Date.now() + 24 * 60 * 60 * 1000) return { ok: false, error: "That date is in the future." };
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("mailboxes").update({ warmup_started_on: date }).eq("id", mailboxId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/outbound/setup");
+  return { ok: true };
+}
+
+export async function setCampaignSignoff(
+  campaignId: string,
+  key: "copy_approved_at" | "list_verified_at",
+  on: boolean
+): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("campaigns")
+    .update({ [key]: on ? new Date().toISOString() : null })
+    .eq("id", campaignId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/outbound/${campaignId}`);
+  return { ok: true };
 }

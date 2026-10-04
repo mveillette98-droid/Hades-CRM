@@ -149,6 +149,9 @@ export interface Mailbox {
   min_gap_seconds: number;
   status: MailboxStatus;
   last_error: string | null;
+  warmup_started_on: string | null;
+  warmup_min_days: number;
+  verified_at: string | null;
   last_sent_at: string | null;
   imap_uid_validity: number | null;
   imap_last_uid: number | null;
@@ -180,6 +183,9 @@ export interface Campaign {
   thread_followups: boolean;
   footer: string | null;
   steps: CampaignStep[];
+  copy_approved_at: string | null;
+  list_verified_at: string | null;
+  test_sent_at: string | null;
   started_at: string | null;
   created_by: string | null;
   created_at: string;
@@ -219,6 +225,14 @@ export interface CampaignLead {
   locked_until: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface DomainCheckRow {
+  domain: string;
+  provider: string;
+  ok: boolean;
+  results: import("@/lib/outbound/dns").DomainReport;
+  checked_at: string;
 }
 
 export type EmailKind = "sent" | "reply" | "auto_reply" | "unsubscribe" | "bounce";

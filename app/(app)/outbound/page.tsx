@@ -1,20 +1,20 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Inbox, Mail, Send } from "lucide-react";
+import { Inbox, Send } from "lucide-react";
 import { TopBar } from "@/components/layout/top-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CopyButton } from "@/components/clients/copy-button";
-import { MailboxDialog } from "@/components/outbound/mailbox-dialog";
-import { MailboxActions } from "@/components/outbound/mailbox-actions";
+import { OutboundTabs } from "@/components/outbound/outbound-tabs";
 import { NewCampaignButton } from "@/components/outbound/new-campaign-button";
 import { ReplyCard } from "@/components/outbound/reply-card";
 import { SuppressForm } from "@/components/outbound/suppress-form";
 import { pct } from "@/components/outbound/bits";
-import { listCampaigns, listInbound, listMailboxes, senderHeartbeat } from "@/lib/outbound/queries";
+import { listCampaigns, listDomainChecks, listInbound, listMailboxes, senderHeartbeat } from "@/lib/outbound/queries";
+import { emailDomain } from "@/lib/outbound/classify";
+import { isWarm } from "@/lib/outbound/readiness";
 import { CAMPAIGN_STATUS_LABEL } from "@/lib/outbound/labels";
-import { currentRole } from "@/lib/leads/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Outbound · Cadence GTM" };
@@ -22,14 +22,18 @@ export const dynamic = "force-dynamic";
 
 export default async function OutboundPage() {
   const supabase = createClient();
-  const [mailboxes, campaigns, replies, heartbeat, role, { data: clientRows }] = await Promise.all([
+  const [mailboxes, campaigns, replies, heartbeat, checks, { data: clientRows }] = await Promise.all([
     listMailboxes(),
     listCampaigns(),
     listInbound(),
     senderHeartbeat(),
-    currentRole(),
+    listDomainChecks(),
     supabase.from("clients").select("id, name").order("name"),
   ]);
+  const okDomains = new Set(checks.filter((c) => c.ok).map((c) => c.domain));
+  const setupIssues =
+    Array.from(new Set(mailboxes.map((m) => emailDomain(m.email)))).filter((d) => !okDomains.has(d)).length +
+    mailboxes.filter((m) => m.status !== "active" || !m.verified_at || !isWarm(m)).length;
   const clients = (clientRows ?? []) as { id: string; name: string }[];
   const running = heartbeat && Date.now() - new Date(heartbeat).getTime() < 3 * 60 * 1000;
   const sending = campaigns.some((c) => c.status === "active");
@@ -49,6 +53,7 @@ export default async function OutboundPage() {
           </div>
           <NewCampaignButton clients={clients} />
         </div>
+        <OutboundTabs active="/outbound" setupIssues={setupIssues} />
 
         <SenderStatus running={!!running} heartbeat={heartbeat} sending={sending} />
 
@@ -132,66 +137,27 @@ export default async function OutboundPage() {
 
         <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
           <Card>
-            <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
-              <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Mail className="h-4 w-4 text-crimson-500" />
-                  Sending inboxes
-                </CardTitle>
-                <CardDescription>
-                  Warm every new inbox for 2 to 3 weeks before it sends a campaign. Cadence doesn&rsquo;t
-                  warm inboxes. Use a warmup service on each one.
-                </CardDescription>
-              </div>
-              <MailboxDialog clients={clients} />
+            <CardHeader>
+              <CardTitle className="text-base">Sending inboxes</CardTitle>
+              <CardDescription>
+                {mailboxes.filter((m) => m.status === "active" && m.verified_at && isWarm(m)).length} of {mailboxes.length} ready to send.
+                Add inboxes, check domains and track warmup on{" "}
+                <Link href="/outbound/setup" className="text-crimson-400 hover:underline">
+                  Setup
+                </Link>
+                .
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              {mailboxes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No inboxes yet. Add one, then hit Test to check it can log in.
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Inbox</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Last 24h</TableHead>
-                      <TableHead className="text-right" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mailboxes.map((m) => (
-                      <TableRow key={m.id}>
-                        <TableCell>
-                          <p className="font-medium">{m.email}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {m.from_name}
-                            {m.client_name && ` · ${m.client_name}`}
-                            {m.last_checked_at &&
-                              ` · replies checked ${formatDistanceToNow(new Date(m.last_checked_at), { addSuffix: true })}`}
-                          </p>
-                          {m.last_error && <p className="mt-1 text-xs text-crimson-300">{m.last_error}</p>}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={m.status === "active" ? "gold" : m.status === "error" ? "crimson" : "outline"}>
-                            {m.status === "active" ? "Active" : m.status === "error" ? "Needs fixing" : "Paused"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {m.sent_24h}/{m.daily_limit}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-start justify-end gap-1">
-                            <MailboxDialog mailbox={m} clients={clients} />
-                            <MailboxActions id={m.id} email={m.email} status={m.status} canDelete={role === "admin"} />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+            <CardContent className="space-y-1.5">
+              {mailboxes.map((m) => (
+                <div key={m.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate">{m.email}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {m.sent_24h}/{m.daily_limit} today
+                    {m.status !== "active" && ` · ${m.status === "error" ? "needs fixing" : "paused"}`}
+                  </span>
+                </div>
+              ))}
             </CardContent>
           </Card>
 

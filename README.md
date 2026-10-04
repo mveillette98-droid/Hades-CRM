@@ -73,6 +73,8 @@ What the sender does:
 - **Threads.** Follow-ups reply in the same thread (`Re:` + In-Reply-To/References) from the inbox that sent email 1.
 - **Merge tags.** `{{first_name}}`, `{{company}}`, `{{personal_line}}`, any CSV column, fallbacks like `{{first_name|there}}`. A lead missing a tag is held back with the reason, never sent "Hi ,".
 - **Replies.** Reads each inbox over IMAP every few minutes. A reply stops that lead and shows up for tagging (interested, booked, not now). Out-of-offices don't stop the sequence. Unsubscribe replies and bounces go on the do-not-email list.
+- **Setup checks.** `/outbound/setup` checks every sending domain's MX, SPF, DKIM and DMARC and shows the exact record to add. Each campaign has a launch checklist (copy approved, logins tested, records passing, inboxes warmed 14 days, not the client's main domain, list verified, test sent) and won't start until it's clear.
+- **Self-protection.** An inbox isn't used until it has 14 days of warmup, and pauses itself if its bounce rate passes 3% over 7 days.
 - **Failures.** A bad login flags the inbox and stops using it. A hard bounce at send time suppresses the address. Anything else retries 3 times, then fails with the error shown on the lead.
 
 What it doesn't do: **warm up inboxes.** Warm every new inbox for 2 to 3 weeks with a warmup service before it sends a campaign, keep each inbox at 30 a day or less, and verify lists before import. The campaign page warns when bounces pass 3%.
@@ -154,6 +156,7 @@ Open the Supabase dashboard → **SQL Editor** and run each file in order:
 4. [`0004_onboarding_intel.sql`](./supabase/migrations/0004_onboarding_intel.sql): onboarding intake fields on `clients`.
 5. [`0005_capture_report_hardening.sql`](./supabase/migrations/0005_capture_report_hardening.sql): run lock, `intel_captures` table, private `intel` storage bucket for screenshots.
 6. [`0006_outbound.sql`](./supabase/migrations/0006_outbound.sql): the cold email sender: inboxes, campaigns, campaign leads, sent and received emails, the do-not-email list.
+7. [`0007_outbound_setup.sql`](./supabase/migrations/0007_outbound_setup.sql): warmup tracking, login checks, launch sign-offs, saved domain checks.
 
 0001 creates:
 

@@ -128,6 +128,10 @@ export function MailboxDialog({
             </Field>
           </div>
 
+          <Field label="Warmup started on" hint="The day this inbox went on a warmup service. It won't send until 14 days later.">
+            <Input name="warmup_started_on" type="date" defaultValue={mailbox?.warmup_started_on ?? ""} />
+          </Field>
+
           <Field label="Signature" hint="Plain text. Goes under every email. Merge tags work.">
             <Textarea name="signature" rows={3} defaultValue={mailbox?.signature ?? ""} placeholder={"Matt\nCadence GTM"} />
           </Field>

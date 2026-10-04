@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
+  DomainCheckRow,
   Campaign,
   CampaignLead,
   EmailMessage,
@@ -177,4 +178,10 @@ export async function threadFor(leadId: string): Promise<EmailMessage[]> {
     .eq("lead_id", leadId)
     .order("sent_at", { ascending: true });
   return (data ?? []) as EmailMessage[];
+}
+
+export async function listDomainChecks(): Promise<DomainCheckRow[]> {
+  const supabase = createClient();
+  const { data } = await supabase.from("domain_checks").select("*");
+  return (data ?? []) as DomainCheckRow[];
 }

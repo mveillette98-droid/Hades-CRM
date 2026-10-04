@@ -13,6 +13,9 @@ import { LeadImport } from "@/components/outbound/lead-import";
 import { LeadActions } from "@/components/outbound/lead-actions";
 import { ReplyCard } from "@/components/outbound/reply-card";
 import { TestEmail } from "@/components/outbound/test-email";
+import { LaunchChecklist } from "@/components/outbound/launch-checklist";
+import { loadChecklist } from "@/lib/outbound/readiness-data";
+import { createClient } from "@/lib/supabase/server";
 import { Notice, Stat, pct } from "@/components/outbound/bits";
 import { getCampaign, listInbound, listLeads, listMailboxes } from "@/lib/outbound/queries";
 import { CAMPAIGN_STATUS_LABEL, LEAD_STATUS_LABEL, REPLY_LABELS } from "@/lib/outbound/labels";
@@ -39,9 +42,10 @@ export default async function CampaignPage({
   const [data, mailboxes, role] = await Promise.all([getCampaign(params.id), listMailboxes(), currentRole()]);
   if (!data) notFound();
   const { campaign, client, mailboxIds, stats, statusCounts } = data;
-  const [leads, replies] = await Promise.all([
+  const [leads, replies, checklist] = await Promise.all([
     listLeads(campaign.id, filter),
     listInbound({ campaignId: campaign.id }),
+    loadChecklist(createClient(), campaign.id),
   ]);
 
   const steps = normalizeSteps(campaign.steps ?? []);
@@ -203,6 +207,16 @@ export default async function CampaignPage({
           </div>
 
           <div className="space-y-6">
+            {checklist && campaign.status !== "completed" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Launch checklist</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <LaunchChecklist campaignId={campaign.id} items={checklist.items} canStart={checklist.canStart} />
+                </CardContent>
+              </Card>
+            )}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Settings</CardTitle>

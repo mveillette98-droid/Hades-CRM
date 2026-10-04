@@ -29,6 +29,7 @@ export const mailboxSchema = z.object({
   min_gap_seconds: int(30, 3600, 300),
   signature: optionalText,
   client_id: optionalText,
+  warmup_started_on: optionalText.refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), "Use a date"),
 });
 
 export const campaignSettingsSchema = z.object({
