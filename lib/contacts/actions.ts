@@ -87,12 +87,27 @@ export async function saveApolloContacts(
   if (people.length === 0) return { ok: false, error: "Pick at least one person." };
   if (people.length > 100) return { ok: false, error: "Save 100 or fewer at a time." };
 
-  let drafts = people;
+  // Keep only contact columns: the search rows also carry UI flags like `saved`.
+  let drafts: ContactDraft[] = people.map((p) => ({
+    apollo_id: p.apollo_id,
+    email: p.email,
+    first_name: p.first_name,
+    last_name: p.last_name,
+    title: p.title,
+    company: p.company,
+    company_domain: p.company_domain,
+    linkedin_url: p.linkedin_url,
+    city: p.city,
+    state: p.state,
+    country: p.country,
+    employees: p.employees,
+    industry: p.industry,
+  }));
   if (opts.reveal) {
-    const need = people.filter((p) => !p.email && p.apollo_id).map((p) => p.apollo_id!);
+    const need = drafts.filter((p) => !p.email && p.apollo_id).map((p) => p.apollo_id!);
     try {
       const found = need.length ? await enrichPeople(need) : new Map<string, ContactDraft>();
-      drafts = people.map((p) => {
+      drafts = drafts.map((p) => {
         const f = p.apollo_id ? found.get(p.apollo_id) : undefined;
         return f ? { ...p, ...Object.fromEntries(Object.entries(f).filter(([, v]) => v != null)) } : p;
       });
