@@ -14,7 +14,11 @@ import { formatCompactCurrency } from "@/lib/utils";
 export const metadata = { title: "Leads · Cadence GTM" };
 export const dynamic = "force-dynamic";
 
-export default async function LeadsPage() {
+export default async function LeadsPage({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
   const [leads, stages, team, role] = await Promise.all([
     listLeads(),
     listStages(),
@@ -57,6 +61,7 @@ export default async function LeadsPage() {
             stages={stages}
             team={team}
             isAdmin={role === "admin"}
+            initialQuery={searchParams.q ?? ""}
           />
         )}
       </main>
