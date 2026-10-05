@@ -662,7 +662,8 @@ export async function handleInbound(
     to_email: box.email,
     subject: m.subject.slice(0, 500),
     body_text: (fresh || m.text).slice(0, 20_000),
-    handled: kind === "auto_reply" || kind === "bounce",
+    // Unsubscribes are handled on arrival (suppressed); there is nothing to tag.
+    handled: kind === "auto_reply" || kind === "bounce" || kind === "unsubscribe",
     sent_at: (m.date ?? now(deps)).toISOString(),
   });
 
