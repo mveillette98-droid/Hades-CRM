@@ -130,8 +130,9 @@ export function parseLeads(input: string): {
       else lead.fields[h] = v;
     });
     // "Full name" only: split it.
-    if (!lead.first_name && lead.fields.name) {
-      const [first, ...rest] = lead.fields.name.split(/\s+/);
+    const fullName = lead.fields.name ?? lead.fields.full_name ?? lead.fields.contact_name;
+    if (!lead.first_name && fullName) {
+      const [first, ...rest] = fullName.split(/\s+/);
       lead.first_name = first || null;
       lead.last_name = rest.join(" ") || lead.last_name;
     }
