@@ -39,7 +39,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { formatCompactCurrency } from "@/lib/utils";
 
-export const metadata = { title: "Dashboard — Hades Blueprint CRM" };
+export const metadata = { title: "Dashboard · Cadence GTM" };
 export const dynamic = "force-dynamic";
 
 function greetingFor(hour: number) {

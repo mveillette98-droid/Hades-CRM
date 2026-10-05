@@ -9,8 +9,10 @@ import {
   UsersRound,
   Megaphone,
   Settings,
+  Briefcase,
+  Send,
 } from "lucide-react";
-import { HBLogo } from "@/components/hb-logo";
+import { CadenceLogo } from "@/components/cadence-logo";
 import { PulseDot } from "@/components/pulse-dot";
 import { cn } from "@/lib/utils";
 
@@ -27,13 +29,30 @@ type NavItem = {
   adminOnly?: boolean;
 };
 
-const items: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/pipeline",  label: "Pipeline",  icon: KanbanSquare },
-  { href: "/leads",     label: "Leads",     icon: Users },
-  { href: "/sources",   label: "Sources",   icon: Megaphone },
-  { href: "/team",      label: "Team",      icon: UsersRound, adminOnly: true },
-  { href: "/settings",  label: "Settings",  icon: Settings },
+const sections: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Sell",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/pipeline",  label: "Pipeline",  icon: KanbanSquare },
+      { href: "/leads",     label: "Leads",     icon: Users },
+      { href: "/sources",   label: "Sources",   icon: Megaphone },
+    ],
+  },
+  {
+    title: "Deliver",
+    items: [
+      { href: "/clients",  label: "Clients",  icon: Briefcase },
+      { href: "/outbound", label: "Outbound", icon: Send },
+    ],
+  },
+  {
+    title: "Workspace",
+    items: [
+      { href: "/team",     label: "Team",     icon: UsersRound, adminOnly: true },
+      { href: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 export function SidebarNav({ role, userName, userEmail }: SidebarNavProps) {
@@ -42,45 +61,49 @@ export function SidebarNav({ role, userName, userEmail }: SidebarNavProps) {
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-ink-700 bg-ink-900">
       <div className="flex h-16 items-center gap-2 border-b border-ink-700 px-5">
-        <HBLogo showWordmark />
+        <CadenceLogo showWordmark />
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          Workspace
-        </p>
-        <ul className="space-y-1">
-          {items
-            .filter((i) => !i.adminOnly || role === "admin")
-            .map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(item.href + "/");
-              const Icon = item.icon;
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-ink-850 text-foreground shadow-[inset_2px_0_0_0_#dc2626]"
-                        : "text-muted-foreground hover:bg-ink-850 hover:text-foreground"
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-4 w-4 transition-colors",
-                        active
-                          ? "text-crimson-500"
-                          : "text-muted-foreground group-hover:text-foreground"
-                      )}
-                    />
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-        </ul>
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        {sections.map((section) => (
+          <div key={section.title}>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              {section.title}
+            </p>
+            <ul className="space-y-1">
+              {section.items
+                .filter((i) => !i.adminOnly || role === "admin")
+                .map((item) => {
+                  const active =
+                    pathname === item.href || pathname.startsWith(item.href + "/");
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                          active
+                            ? "bg-ink-850 text-foreground shadow-[inset_2px_0_0_0_#dc2626]"
+                            : "text-muted-foreground hover:bg-ink-850 hover:text-foreground"
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            "h-4 w-4 transition-colors",
+                            active
+                              ? "text-crimson-500"
+                              : "text-muted-foreground group-hover:text-foreground"
+                          )}
+                        />
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-ink-700 p-4">
@@ -122,5 +145,5 @@ function initials(name: string) {
     .filter(Boolean)
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())
-    .join("") || "HB";
+    .join("") || "CG";
 }

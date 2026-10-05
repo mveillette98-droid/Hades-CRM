@@ -82,7 +82,7 @@ export function BulkActionBar({
 
   function exportCsv() {
     const csv = leadsToCsv(selectedLeads);
-    downloadCsv(`hades-leads-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+    downloadCsv(`cadence-leads-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   }
 
   return (

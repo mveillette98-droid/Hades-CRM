@@ -74,10 +74,11 @@ interface LeadsListProps {
   stages: PipelineStage[];
   team: Pick<Profile, "id" | "full_name" | "email">[];
   isAdmin: boolean;
+  initialQuery?: string;
 }
 
-export function LeadsList({ leads, stages, team, isAdmin }: LeadsListProps) {
-  const [query, setQuery] = useState("");
+export function LeadsList({ leads, stages, team, isAdmin, initialQuery = "" }: LeadsListProps) {
+  const [query, setQuery] = useState(initialQuery);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");

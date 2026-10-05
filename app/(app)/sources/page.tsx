@@ -19,7 +19,7 @@ import {
   pivotMonthlyByWonTCV,
 } from "@/lib/sources/metrics";
 
-export const metadata = { title: "Sources — Hades Blueprint CRM" };
+export const metadata = { title: "Sources · Cadence GTM" };
 export const dynamic = "force-dynamic";
 
 export default async function SourcesPage() {

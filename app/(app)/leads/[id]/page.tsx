@@ -15,6 +15,7 @@ import { DealTypeIcon } from "@/components/leads/deal-type-icon";
 import { StageBadge } from "@/components/leads/stage-badge";
 import { AddNoteForm } from "@/components/leads/add-note-form";
 import { DeleteLeadButton } from "@/components/leads/delete-lead-button";
+import { ClientSheet } from "@/components/clients/client-sheet";
 import {
   getLead,
   listActivities,
@@ -58,6 +59,20 @@ export default async function LeadDetailPage({
             All leads
           </Link>
           <div className="flex items-center gap-2">
+            {lead.stage && !lead.stage.is_lost && (lead.stage.is_won || lead.stage.position >= 6) ? (
+              <ClientSheet
+                mode="convert"
+                triggerVariant="gold"
+                prefill={{
+                  name: lead.company_name,
+                  vertical: lead.vertical ?? "Accounting / CAS",
+                  website_url: lead.website_url,
+                  monthly_retainer: Number(lead.monthly_recurring_value ?? 0),
+                  notes: lead.scope_notes,
+                  lead_id: lead.id,
+                }}
+              />
+            ) : null}
             <LeadSheet
               mode="edit"
               lead={lead}
@@ -83,6 +98,7 @@ export default async function LeadDetailPage({
                 <DealTypeIcon type={lead.deal_type} />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                   {DEAL_TYPE_LABEL[lead.deal_type]} · {LEAD_SOURCE_LABEL[lead.source]}
+                  {lead.vertical ? ` · ${lead.vertical}` : ""}
                 </span>
               </div>
               <CardTitle className="text-2xl">{lead.company_name}</CardTitle>

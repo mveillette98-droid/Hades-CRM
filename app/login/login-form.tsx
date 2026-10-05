@@ -61,7 +61,7 @@ export function LoginForm({
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="you@hadesblueprint.com"
+            placeholder="you@cadencegtm.com"
             required
           />
         </div>

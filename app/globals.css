@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
-  Hades Blueprint CRM — always dark.
+  Cadence GTM — always dark.
   Shadcn semantic tokens mapped to brand palette.
 */
 @layer base {
@@ -83,5 +83,27 @@
     box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
       0 8px 24px -8px rgba(220, 38, 38, 0.45);
     border-color: rgba(220, 38, 38, 0.55);
+  }
+}
+
+/* Market analysis report: print as a clean light document. */
+@media print {
+  aside,
+  header.sticky,
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  .report-paper {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  @page {
+    margin: 16mm;
   }
 }
