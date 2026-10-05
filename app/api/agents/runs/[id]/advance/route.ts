@@ -28,15 +28,20 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   // Claim the run. If another tab or request holds the lock, back off.
+  // Two tries (no lock, then an expired lock) instead of one .or(): PostgREST
+  // re-applies or= filters to the updated row, so an .or() claim always comes back empty.
   const now = new Date();
-  const { data: claimed } = await supabase
-    .from("agent_runs")
-    .update({ locked_until: new Date(now.getTime() + LOCK_MS).toISOString() })
-    .eq("id", params.id)
-    .eq("status", "running")
-    .or(`locked_until.is.null,locked_until.lt."${now.toISOString()}"`)
-    .select("*")
-    .maybeSingle<AgentRun>();
+  const claim = (expired: boolean) => {
+    const q = supabase
+      .from("agent_runs")
+      .update({ locked_until: new Date(now.getTime() + LOCK_MS).toISOString() })
+      .eq("id", params.id)
+      .eq("status", "running");
+    return (expired ? q.lt("locked_until", now.toISOString()) : q.is("locked_until", null))
+      .select("*")
+      .maybeSingle<AgentRun>();
+  };
+  const claimed = (await claim(false)).data ?? (await claim(true)).data;
 
   if (!claimed) {
     const { data: run } = await supabase

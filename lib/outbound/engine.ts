@@ -364,15 +364,19 @@ async function sendOne(
   }
 
   // Claim the lead so a second sender (or a double tick) can't send it twice.
-  const { data: claimed } = await db
-    .from("campaign_leads")
-    .update({ locked_until: new Date(t.getTime() + CLAIM_MS).toISOString() })
-    .eq("id", lead.id)
-    .eq("current_step", lead.current_step)
-    .in("status", ["queued", "active"])
-    .or(`locked_until.is.null,locked_until.lt."${t.toISOString()}"`)
-    .select("id");
-  if (!claimed || claimed.length === 0) return false;
+  // Two tries (no lock, then an expired lock) instead of one .or(): PostgREST
+  // re-applies or= filters to the updated row, so an .or() claim never succeeds.
+  const claim = async (expired: boolean) => {
+    const q = db
+      .from("campaign_leads")
+      .update({ locked_until: new Date(t.getTime() + CLAIM_MS).toISOString() })
+      .eq("id", lead.id)
+      .eq("current_step", lead.current_step)
+      .in("status", ["queued", "active"]);
+    const { data } = await (expired ? q.lt("locked_until", t.toISOString()) : q.is("locked_until", null)).select("id");
+    return (data ?? []).length > 0;
+  };
+  if (!(await claim(false)) && !(await claim(true))) return false;
 
   const idx = lead.current_step;
   if (idx >= steps.length) {
