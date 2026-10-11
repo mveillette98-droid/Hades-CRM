@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Globe, Mail, Phone } from "lucide-react";
+import { ArrowLeft, FileText, Globe, Mail, Megaphone, Phone } from "lucide-react";
 import { TopBar } from "@/components/layout/top-bar";
 import {
   Card,
@@ -15,12 +15,15 @@ import { DealTypeIcon } from "@/components/leads/deal-type-icon";
 import { StageBadge } from "@/components/leads/stage-badge";
 import { AddNoteForm } from "@/components/leads/add-note-form";
 import { DeleteLeadButton } from "@/components/leads/delete-lead-button";
+import { ClientSheet } from "@/components/clients/client-sheet";
 import {
   getLead,
   listActivities,
   listStages,
   listTeam,
   currentRole,
+  getTeardown,
+  type LeadTeardown,
 } from "@/lib/leads/queries";
 import { DEAL_TYPE_LABEL, LEAD_SOURCE_LABEL } from "@/lib/leads/labels";
 import { formatCompactCurrency, formatCurrency, daysBetween } from "@/lib/utils";
@@ -32,12 +35,13 @@ export default async function LeadDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [lead, stages, team, activities, role] = await Promise.all([
+  const [lead, stages, team, activities, role, teardown] = await Promise.all([
     getLead(params.id),
     listStages(),
     listTeam(),
     listActivities(params.id),
     currentRole(),
+    getTeardown(params.id),
   ]);
 
   if (!lead) notFound();
@@ -58,6 +62,20 @@ export default async function LeadDetailPage({
             All leads
           </Link>
           <div className="flex items-center gap-2">
+            {!teardown && lead.stage && !lead.stage.is_lost && (lead.stage.is_won || lead.stage.position >= 6) ? (
+              <ClientSheet
+                mode="convert"
+                triggerVariant="gold"
+                prefill={{
+                  name: lead.company_name,
+                  vertical: lead.vertical ?? "Accounting / CAS",
+                  website_url: lead.website_url,
+                  monthly_retainer: Number(lead.monthly_recurring_value ?? 0),
+                  notes: lead.scope_notes,
+                  lead_id: lead.id,
+                }}
+              />
+            ) : null}
             <LeadSheet
               mode="edit"
               lead={lead}
@@ -83,6 +101,7 @@ export default async function LeadDetailPage({
                 <DealTypeIcon type={lead.deal_type} />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                   {DEAL_TYPE_LABEL[lead.deal_type]} · {LEAD_SOURCE_LABEL[lead.source]}
+                  {lead.vertical ? ` · ${lead.vertical}` : ""}
                 </span>
               </div>
               <CardTitle className="text-2xl">{lead.company_name}</CardTitle>
@@ -143,6 +162,8 @@ export default async function LeadDetailPage({
             </p>
           </CardContent>
         </Card>
+
+        {lead.source === "paid_ads" && <AdLeadCard lead={lead} teardown={teardown} />}
 
         {/* Activity log */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
@@ -346,6 +367,72 @@ function ActivityRow({
         {body}
       </div>
     </li>
+  );
+}
+
+function AdLeadCard({
+  lead,
+  teardown,
+}: {
+  lead: NonNullable<Awaited<ReturnType<typeof getLead>>>;
+  teardown: LeadTeardown | null;
+}) {
+  const run = teardown?.run;
+  const status = !lead.booked_at
+    ? "Starts when they book a call."
+    : !run
+      ? "Not queued. Open the prospect and run onboarding research."
+      : run.status === "succeeded"
+        ? "Ready."
+        : run.status === "failed"
+          ? `Failed: ${run.error ?? "see the prospect page"}`
+          : run.error
+            ? `Stuck on "${run.step}". ${run.error}`
+            : `${run.step ?? "Queued"}. Needs npm run agents on the laptop.`;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4 space-y-0">
+        <div className="space-y-1.5">
+          <CardTitle className="flex items-center gap-2">
+            <Megaphone className="h-4 w-4 text-crimson-500" />
+            Ad lead
+          </CardTitle>
+          <CardDescription>
+            {lead.booked_at
+              ? `Booked a call from the teardown page, ${fmtDate(lead.booked_at)}.`
+              : "Filled the teardown form but hasn't booked yet. Call them."}
+          </CardDescription>
+        </div>
+        {teardown && (
+          <div className="flex items-center gap-2">
+            {run?.status === "succeeded" && (
+              <Link
+                href={`/clients/${teardown.clientId}/report/${run.id}`}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-crimson-600 px-3 text-sm font-medium text-white hover:bg-crimson-500"
+              >
+                <FileText className="h-4 w-4" />
+                Open teardown
+              </Link>
+            )}
+            <Link
+              href={`/clients/${teardown.clientId}`}
+              className="inline-flex h-9 items-center rounded-md border border-ink-700 px-3 text-sm hover:border-crimson-600/60"
+            >
+              Prospect profile
+            </Link>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        <dl className="grid grid-cols-2 gap-6 text-sm sm:grid-cols-4">
+          <Detail label="Teardown" value={status} />
+          <Detail label="Campaign" value={lead.utm_campaign || "—"} />
+          <Detail label="Ad" value={lead.utm_content || "—"} />
+          <Detail label="Source / medium" value={[lead.utm_source, lead.utm_medium].filter(Boolean).join(" / ") || "—"} />
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -15,7 +15,7 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // Hades Blueprint brand palette
+        // Cadence GTM brand palette
         ink: {
           950: "#0a0a0a", // deep black background
           900: "#141414", // secondary background

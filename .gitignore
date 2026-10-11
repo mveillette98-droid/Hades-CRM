@@ -10,3 +10,6 @@ out
 next-env.d.ts
 .turbo
 tsconfig.tsbuildinfo
+
+# Chrome capture profile (logins live here)
+.cadence-chrome/

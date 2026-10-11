@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   Activity,
+  AgentRun,
   Lead,
   PipelineStage,
   Profile,
@@ -107,4 +108,32 @@ export async function currentRole(): Promise<"admin" | "member" | null> {
     .eq("id", user.id)
     .maybeSingle<{ role: "admin" | "member" }>();
   return data?.role ?? "member";
+}
+
+export interface LeadTeardown {
+  clientId: string;
+  run: Pick<AgentRun, "id" | "status" | "step" | "error"> | null;
+}
+
+/** The prospect profile an ads lead got, and its teardown (research run), if any. */
+export async function getTeardown(leadId: string): Promise<LeadTeardown | null> {
+  const supabase = createClient();
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  if (!client) return null;
+
+  const { data: run } = await supabase
+    .from("agent_runs")
+    .select("id, status, step, error")
+    .eq("client_id", client.id)
+    .eq("kind", "research")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<Pick<AgentRun, "id" | "status" | "step" | "error">>();
+  return { clientId: client.id, run: run ?? null };
 }

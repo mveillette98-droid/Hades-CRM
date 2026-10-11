@@ -49,7 +49,7 @@ export function MantraStrip({ greeting }: MantraStripProps) {
           &ldquo;{line}&rdquo;
         </p>
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          Today&rsquo;s mark — Hades Blueprint
+          Today&rsquo;s beat · Cadence GTM
         </p>
       </div>
     </section>

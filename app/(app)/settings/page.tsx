@@ -1,7 +1,7 @@
 import { TopBar } from "@/components/layout/top-bar";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export const metadata = { title: "Settings — Hades Blueprint CRM" };
+export const metadata = { title: "Settings · Cadence GTM" };
 
 export default function SettingsPage() {
   return (

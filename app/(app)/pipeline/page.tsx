@@ -6,7 +6,7 @@ import { listLeads, listStages, listTeam } from "@/lib/leads/queries";
 import { formatCompactCurrency } from "@/lib/utils";
 import { KanbanSquare } from "lucide-react";
 
-export const metadata = { title: "Pipeline — Hades Blueprint CRM" };
+export const metadata = { title: "Pipeline · Cadence GTM" };
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {

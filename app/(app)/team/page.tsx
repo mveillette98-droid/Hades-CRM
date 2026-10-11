@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TopBar } from "@/components/layout/top-bar";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export const metadata = { title: "Team — Hades Blueprint CRM" };
+export const metadata = { title: "Team · Cadence GTM" };
 
 export default async function TeamPage() {
   const supabase = createClient();
