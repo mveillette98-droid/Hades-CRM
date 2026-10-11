@@ -19,6 +19,7 @@ export const SOURCE_COLORS: Record<LeadSource, string> = {
   referral: "#10b981",       // emerald
   network: "#3b82f6",        // blue
   website_form: "#a855f7",   // purple
+  paid_ads: "#f97316",       // orange
   other: "#94a3b8",          // slate
 };
 

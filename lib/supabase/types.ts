@@ -22,6 +22,7 @@ export type LeadSource =
   | "referral"
   | "network"
   | "website_form"
+  | "paid_ads"
   | "other";
 
 export interface Profile {
@@ -66,9 +67,16 @@ export interface Lead {
   proposal_sent_date: string | null;
   expected_close_date: string | null;
   actual_close_date: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  fbclid: string | null;
+  booked_at: string | null;
 }
 
-export type ClientStatus = "onboarding" | "active" | "paused" | "churned";
+export type ClientStatus = "prospect" | "onboarding" | "active" | "paused" | "churned";
 
 export interface Client {
   id: string;
@@ -407,7 +415,16 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      submit_teardown: {
+        Args: { p: Record<string, string> };
+        Returns: { lead_id: string; duplicate: boolean };
+      };
+      teardown_booked: {
+        Args: { p_lead: string };
+        Returns: { ok: boolean; already?: boolean; run_id?: string | null };
+      };
+    };
     Enums: {
       user_role: UserRole;
       deal_type: DealType;

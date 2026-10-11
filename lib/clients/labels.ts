@@ -1,6 +1,7 @@
 import type { AgentKind, ClientStatus } from "@/lib/supabase/types";
 
 export const CLIENT_STATUSES: { value: ClientStatus; label: string }[] = [
+  { value: "prospect",   label: "Prospect" },
   { value: "onboarding", label: "Onboarding" },
   { value: "active",     label: "Active" },
   { value: "paused",     label: "Paused" },

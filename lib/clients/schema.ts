@@ -14,7 +14,7 @@ export const clientSchema = z.object({
   location: optionalText,
   known_competitors: optionalText,
   current_marketing: optionalText,
-  status: z.enum(["onboarding", "active", "paused", "churned"]),
+  status: z.enum(["prospect", "onboarding", "active", "paused", "churned"]),
   monthly_retainer: z
     .union([z.string(), z.number()])
     .transform((v) => {

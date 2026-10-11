@@ -18,6 +18,7 @@ export const DEAL_TYPE_SHORT: Record<DealType, string> = Object.fromEntries(
 ) as Record<DealType, string>;
 
 export const LEAD_SOURCES: { value: LeadSource; label: string }[] = [
+  { value: "paid_ads",      label: "Paid Ads" },
   { value: "cold_call",     label: "Cold Call" },
   { value: "cold_email",    label: "Cold Email" },
   { value: "linkedin",      label: "LinkedIn" },
